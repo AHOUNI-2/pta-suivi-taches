@@ -1,0 +1,26 @@
+# === Configuration locale ===
+# Chacun a sa propre config (identifiants BDD, BASE_URL...).
+# Copier config/config.example.php -> config/config.php et l'adapter.
+/config/config.php
+
+# === Fichiers déposés par les utilisateurs ===
+# On garde la structure des dossiers (.gitkeep) mais pas leur contenu.
+/uploads/avatars/*
+/uploads/comptes_rendus/*
+/uploads/livrables/*
+!/uploads/avatars/.gitkeep
+!/uploads/comptes_rendus/.gitkeep
+!/uploads/livrables/.gitkeep
+
+# === Logs ===
+*.log
+/cron/*.log
+
+# === Système / éditeurs ===
+Thumbs.db
+Desktop.ini
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*~

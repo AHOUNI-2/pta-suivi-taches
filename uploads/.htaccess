@@ -1,0 +1,5 @@
+# Empêche l'exécution de scripts PHP dans le dossier des fichiers téléversés
+<FilesMatch "\.(php|php\d|phtml|pl|py|cgi|sh)$">
+    Require all denied
+</FilesMatch>
+Options -Indexes

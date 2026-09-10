@@ -1,0 +1,13 @@
+# Normalise les fins de ligne entre Windows / Linux pour éviter les faux diffs.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.eot binary
+*.ttf binary
