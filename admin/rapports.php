@@ -127,7 +127,7 @@ $moisData = array_map('intval', array_column($parMois, 'n'));
 $extraScripts = '<script src="' . BASE_URL . '/assets/vendor/chartjs/chart.umd.min.js"></script><script>
 new Chart(document.getElementById("chartMois"), {
   type: "line",
-  data: { labels: ' . json_encode($moisLabels) . ', datasets: [{ label: "Tâches créées", data: ' . json_encode($moisData) . ', borderColor: "#0f2942", backgroundColor: "rgba(15,41,66,0.08)", fill: true, tension: 0.3 }] },
+  data: { labels: ' . json_encode($moisLabels) . ', datasets: [{ label: "Tâches créées", data: ' . json_encode($moisData) . ', borderColor: "#0a4d0a", backgroundColor: "rgba(10,77,10,0.08)", fill: true, tension: 0.3 }] },
   options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
 });
 new Chart(document.getElementById("chartPriorite"), {

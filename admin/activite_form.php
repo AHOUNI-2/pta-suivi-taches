@@ -87,6 +87,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verifyCsrf()) {
                     $data['Date_debut'], $data['Date_fin'], $data['ID_agent_dpip'], $data['ID_responsable'],
                     $deptId ?: null, $data['Priorite'], $data['Statut'], $id,
                 ]);
+                majProgression($pdo, $id);
+                if ((int)($existing['pere_ID'] ?? 0) !== (int)($pereId ?? 0)) {
+                    majProgression($pdo, (int)($existing['pere_ID'] ?? 0));
+                }
                 logJournal($pdo, $id, (int)$user['ID_agent_dpip'], 'modification', typeActiviteLabel($data['Types']) . ' modifiée par l\'administrateur');
 
                 $agentAChange = (int)$existing['ID_agent_dpip'] !== (int)$data['ID_agent_dpip'];
@@ -125,6 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verifyCsrf()) {
             ]);
             $newId = (int)$pdo->lastInsertId();
 
+            majProgression($pdo, $newId);
             logJournal($pdo, $newId, (int)$user['ID_agent_dpip'], 'creation', typeActiviteLabel($data['Types']) . ' créée par l\'administrateur');
             createNotification($pdo, (int)$data['ID_agent_dpip'], 'Nouvelle attribution', 'Vous avez une nouvelle ' . mb_strtolower(typeActiviteLabel($data['Types'])) . ' : "' . $data['Libelle'] . '".', '/tache_detail.php?id=' . $newId);
             createNotification($pdo, (int)$data['ID_responsable'], 'Nouvelle activité dans votre périmètre', 'Une ' . mb_strtolower(typeActiviteLabel($data['Types'])) . ' "' . $data['Libelle'] . '" a été créée par l\'administrateur.', '/tache_detail.php?id=' . $newId);

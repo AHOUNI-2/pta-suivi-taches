@@ -51,7 +51,7 @@ include __DIR__ . '/includes/header.php';
             <div class="card h-100">
                 <div class="card-body">
                     <div class="d-flex justify-content-between mb-2">
-                        <span class="badge <?= statutBadgeClass($a['Statut']) ?>"><?= statutLabel($a['Statut']) ?></span>
+                        <span class="badge <?= statutBadgeClass($a['Statut']) ?>"><?= statutLabel($a['Statut'], (int)$a['Progression']) ?></span>
                         <span class="badge <?= prioriteBadgeClass($a['Priorite']) ?>"><?= prioriteLabel($a['Priorite']) ?></span>
                     </div>
                     <span class="badge <?= typeActiviteBadgeClass($a['Types']) ?> mb-1"><?= h(typeActiviteLabel($a['Types'])) ?></span>
@@ -62,7 +62,7 @@ include __DIR__ . '/includes/header.php';
                         <span class="text-muted"><?= (int)$a['Progression'] ?>% réalisé</span>
                         <span class="<?= estEnRetard($a['Date_fin'], $a['Statut']) ? 'text-danger fw-semibold' : 'text-muted' ?>">Échéance : <?= formatDate($a['Date_fin']) ?></span>
                     </div>
-                    <a href="<?= BASE_URL ?>/tache_detail.php?id=<?= $a['ID__activites'] ?>" class="btn btn-sm btn-primary w-100">Ouvrir <i class="bi bi-arrow-right"></i></a>
+                    <a href="<?= BASE_URL ?>/tache_detail.php?id=<?= $a['ID__activites'] ?>" class="btn btn-sm btn-ouvrir-bleu w-100">Ouvrir <i class="bi bi-arrow-right"></i></a>
                 </div>
             </div>
         </div>

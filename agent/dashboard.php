@@ -76,7 +76,7 @@ include __DIR__ . '/../includes/header.php';
     </div>
     <div class="col-6 col-lg-3">
         <div class="stat-card">
-            <div class="stat-icon" style="background:#eaf1fb;color:#0d6efd"><i class="bi bi-arrow-repeat"></i></div>
+            <div class="stat-icon" style="background:#e6f3e6;color:#2e9e2e"><i class="bi bi-arrow-repeat"></i></div>
             <div><div class="stat-value"><?= $parStatut['en_cours'] ?></div><div class="stat-label">En cours</div></div>
         </div>
     </div>

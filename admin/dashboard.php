@@ -143,7 +143,7 @@ const deptLabels = ' . json_encode(array_column($parDepartement, 'dept')) . ';
 const deptData = ' . json_encode(array_map('intval', array_column($parDepartement, 'n'))) . ';
 new Chart(document.getElementById("chartDept"), {
   type: "bar",
-  data: { labels: deptLabels, datasets: [{ label: "Tâches", data: deptData, backgroundColor: "#0f2942", borderRadius: 4 }] },
+  data: { labels: deptLabels, datasets: [{ label: "Tâches", data: deptData, backgroundColor: "#0a4d0a", borderRadius: 4 }] },
   options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
 });
 </script>';

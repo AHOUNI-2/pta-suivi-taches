@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <title>Première connexion — <?= h(APP_NAME) ?></title>
 <link rel="stylesheet" href="<?= BASE_URL ?>/assets/vendor/bootstrap/css/bootstrap.min.css">
 <link rel="stylesheet" href="<?= BASE_URL ?>/assets/vendor/bootstrap-icons/font/bootstrap-icons.css">
-<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css">
+<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css?v=<?= @filemtime(ROOT_PATH . "/assets/css/style.css") ?>">
 </head>
 <body>
 <div class="login-wrapper">
@@ -91,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <input type="password" name="confirmation" class="form-control" minlength="6" required>
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-lg w-100 text-white" style="background:var(--pta-navy)">
+                        <button type="submit" class="btn btn-lg w-100 text-white btn-login-orange" style="background:#1b7f1b;border-color:#1b7f1b">
                             <i class="bi bi-shield-check me-1"></i> Définir mon mot de passe
                         </button>
                     </form>

@@ -40,17 +40,20 @@ include __DIR__ . '/../includes/header.php';
 ?>
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <p class="text-muted mb-0">Toutes les activités, sous-activités et tâches, tous responsables confondus.</p>
-    <a href="<?= BASE_URL ?>/admin/activite_form.php" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nouvelle activité / tâche</a>
+    <div class="d-flex gap-2">
+        <a href="<?= BASE_URL ?>/admin/activites_import.php" class="btn btn-outline-secondary"><i class="bi bi-file-earmark-arrow-up"></i> Importer depuis Excel</a>
+        <a href="<?= BASE_URL ?>/admin/activite_form.php" class="btn btn-bleu"><i class="bi bi-plus-lg"></i> Nouvelle activité / tâche</a>
+    </div>
 </div>
 
 <div class="card mb-3">
     <div class="card-body">
         <form method="get" class="row g-2 align-items-end">
-            <div class="col-md-3">
+            <div class="col-lg-2">
                 <label class="form-label small fw-semibold">Recherche</label>
                 <input type="text" name="q" class="form-control" value="<?= h($recherche) ?>" placeholder="Libellé, agent...">
             </div>
-            <div class="col-md-2">
+            <div class="col-lg-2">
                 <label class="form-label small fw-semibold">Type</label>
                 <select name="type" class="form-select">
                     <option value="">Tous</option>
@@ -59,7 +62,7 @@ include __DIR__ . '/../includes/header.php';
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-lg-2">
                 <label class="form-label small fw-semibold">Statut</label>
                 <select name="statut" class="form-select">
                     <option value="">Tous</option>
@@ -68,7 +71,7 @@ include __DIR__ . '/../includes/header.php';
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-lg-2">
                 <label class="form-label small fw-semibold">Département</label>
                 <select name="departement" class="form-select">
                     <option value="">Tous</option>
@@ -77,7 +80,7 @@ include __DIR__ . '/../includes/header.php';
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-lg-3">
                 <label class="form-label small fw-semibold">Responsable Service / Sous-directeur</label>
                 <select name="responsable" class="form-select">
                     <option value="">Tous</option>
@@ -87,7 +90,7 @@ include __DIR__ . '/../includes/header.php';
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="col-md-1"><button class="btn btn-outline-secondary w-100"><i class="bi bi-search"></i></button></div>
+            <div class="col-lg-1"><button class="btn btn-outline-secondary w-100"><i class="bi bi-search"></i></button></div>
         </form>
     </div>
 </div>
@@ -118,7 +121,7 @@ include __DIR__ . '/../includes/header.php';
                         <div class="progress"><div class="progress-bar bg-success" style="width:<?= (int)$a['Progression'] ?>%"></div></div>
                         <span class="small text-muted"><?= (int)$a['Progression'] ?>%</span>
                     </td>
-                    <td><span class="badge <?= statutBadgeClass($a['Statut']) ?>"><?= statutLabel($a['Statut']) ?></span></td>
+                    <td><span class="badge <?= statutBadgeClass($a['Statut']) ?>"><?= statutLabel($a['Statut'], (int)$a['Progression']) ?></span></td>
                     <td class="text-nowrap">
                         <a href="<?= BASE_URL ?>/admin/activite_form.php?id=<?= $a['ID__activites'] ?>" class="btn btn-sm btn-outline-secondary" title="Modifier"><i class="bi bi-pencil"></i></a>
                         <a href="<?= BASE_URL ?>/tache_detail.php?id=<?= $a['ID__activites'] ?>" class="btn btn-sm btn-outline-secondary" title="Détail"><i class="bi bi-eye"></i></a>

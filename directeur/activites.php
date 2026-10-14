@@ -43,7 +43,7 @@ include __DIR__ . '/../includes/header.php';
 ?>
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <p class="text-muted mb-0">Toutes les activités de toutes les directions.</p>
-    <a href="<?= BASE_URL ?>/directeur/activite_form.php" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Déléguer une activité</a>
+    <a href="<?= BASE_URL ?>/directeur/activite_form.php" class="btn btn-bleu"><i class="bi bi-plus-lg"></i> Déléguer une activité</a>
 </div>
 
 <div class="card mb-3">
@@ -116,7 +116,7 @@ include __DIR__ . '/../includes/header.php';
                         <div class="progress"><div class="progress-bar bg-success" style="width:<?= (int)$a['Progression'] ?>%"></div></div>
                         <span class="small text-muted"><?= (int)$a['Progression'] ?>%</span>
                     </td>
-                    <td><span class="badge <?= statutBadgeClass($a['Statut']) ?>"><?= statutLabel($a['Statut']) ?></span></td>
+                    <td><span class="badge <?= statutBadgeClass($a['Statut']) ?>"><?= statutLabel($a['Statut'], (int)$a['Progression']) ?></span></td>
                     <td class="text-nowrap">
                         <?php if ((int)$a['ID_responsable'] === $dirId): ?>
                             <a href="<?= BASE_URL ?>/directeur/activite_form.php?id=<?= $a['ID__activites'] ?>" class="btn btn-sm btn-outline-secondary" title="Modifier"><i class="bi bi-pencil"></i></a>

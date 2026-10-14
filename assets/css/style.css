@@ -3,10 +3,10 @@
    ========================================================================== */
 
 :root {
-  --pta-navy: #0f2942;
-  --pta-navy-dark: #0a1c2e;
-  --pta-navy-light: #1c3f5f;
-  --pta-orange: #f77f00;
+  --pta-navy: #0a4d0a;
+  --pta-navy-dark: #063306;
+  --pta-navy-light: #1a6b1a;
+  --pta-orange: #ee5000;
   --pta-green: #2a9d5c;
   --pta-bg: #f4f6f9;
   --pta-border: #e2e6ec;
@@ -105,9 +105,9 @@ a { text-decoration: none; }
 }
 
 .app-sidebar .nav-link.active {
-  background: rgba(247, 127, 0, 0.14);
+  background: rgba(42, 157, 92, 0.25);
   color: #fff;
-  border-left-color: var(--pta-orange);
+  border-left-color: var(--pta-green);
   font-weight: 600;
 }
 
@@ -240,7 +240,7 @@ a { text-decoration: none; }
   background: #fff;
   border-radius: 16px;
   overflow: hidden;
-  max-width: 900px;
+  max-width: 760px;
   width: 100%;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
 }
@@ -319,3 +319,68 @@ a { text-decoration: none; }
   }
   .sidebar-backdrop.show { display: block; }
 }
+
+/* ==========================================================================
+   Charte graphique : vert foncé + orange (remplace le bleu Bootstrap)
+   ========================================================================== */
+:root {
+  --bs-primary: #0a4d0a;
+  --bs-primary-rgb: 10, 77, 10;
+  --bs-link-color: #0a4d0a;
+  --bs-link-hover-color: #063306;
+  --bs-info: #2e9e2e;
+  --bs-info-rgb: 46, 158, 46;
+}
+.btn-primary { --bs-btn-bg: #0a4d0a; --bs-btn-border-color: #0a4d0a; --bs-btn-hover-bg: #063306; --bs-btn-hover-border-color: #063306; --bs-btn-active-bg: #063306; --bs-btn-active-border-color: #063306; --bs-btn-disabled-bg: #0a4d0a; --bs-btn-disabled-border-color: #0a4d0a; }
+.btn-outline-primary { --bs-btn-color: #0a4d0a; --bs-btn-border-color: #0a4d0a; --bs-btn-hover-bg: #0a4d0a; --bs-btn-hover-border-color: #0a4d0a; --bs-btn-active-bg: #0a4d0a; --bs-btn-active-border-color: #0a4d0a; }
+.text-primary { color: #0a4d0a !important; }
+.bg-primary { background-color: #0a4d0a !important; }
+.border-primary { border-color: #0a4d0a !important; }
+.badge.bg-info, .bg-info { background-color: #2e9e2e !important; }
+.form-control:focus, .form-select:focus { border-color: #ee5000; box-shadow: 0 0 0 .2rem rgba(238,80,0,.2); }
+
+/* --- Interface de connexion : vert foncé + orange --- */
+.login-wrapper { background: radial-gradient(circle at top left, #1a6b1a, #042a04); }
+.login-side { border-right: 5px solid var(--pta-orange); }
+.login-side::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 6px; background: var(--pta-orange); }
+.login-card h1, .login-card h2, .login-card h3, .login-card h4, .login-card h5 { color: var(--pta-navy); }
+.login-card .form-control:focus { border-color: var(--pta-orange); box-shadow: 0 0 0 .2rem rgba(238,80,0,.2); }
+.btn-login-orange { background: #1b7f1b; border-color: #1b7f1b; font-weight: 600; }
+.btn-login-orange:hover, .btn-login-orange:focus, .btn-login-orange:active { background: #146014 !important; border-color: #146014 !important; color: #fff; }
+.login-card a { color: var(--pta-orange); }
+.login-card a:hover { color: #c94300; }
+
+/* --- Lisibilité des textes (contraste renforcé sur fond vert foncé) --- */
+.app-sidebar .brand-text small { color: #d8f0d8; }
+.app-sidebar .nav-section-title { color: #ffb27a; font-weight: 700; }
+.app-sidebar .nav-link { color: #f2fbf2; }
+.app-sidebar .nav-link:hover { background: rgba(255, 255, 255, 0.14); color: #fff; }
+.app-sidebar .nav-link.active { background: rgba(238, 80, 0, 0.35); border-left-color: #ff8a3d; color: #fff; }
+.login-side, .login-side p, .login-side .text-white-50 { color: #f2fbf2 !important; }
+.login-side h1, .login-side h2, .login-side h3, .login-side h4 { color: #fff; }
+/* Sur fond blanc : textes secondaires plus foncés, liens orange assombri */
+.text-muted, .text-secondary { color: #4f5b66 !important; }
+.card-header, .card-title { color: #063306; }
+.login-card a, a { --link-orange: #c94300; }
+.login-card a { color: #c94300; }
+.login-card a:hover { color: #8f2f00; }
+
+/* --- Boutons des pages Activités : bleu (le reste de l'application reste vert) --- */
+.btn-bleu { --bs-btn-color: #fff; --bs-btn-bg: #0d6efd; --bs-btn-border-color: #0d6efd; --bs-btn-hover-color: #fff; --bs-btn-hover-bg: #0a58ca; --bs-btn-hover-border-color: #0a58ca; --bs-btn-active-color: #fff; --bs-btn-active-bg: #0a58ca; --bs-btn-active-border-color: #0a58ca; --bs-btn-focus-shadow-rgb: 13, 110, 253; }
+
+/* --- Colonne « Type » des activités : bleu (Activité = bleu, Sous-activité = bleu clair) --- */
+.badge.bg-type-activite { background-color: #0d6efd !important; }
+.badge.bg-type-sous-activite { background-color: #0dcaf0 !important; }
+
+/* --- Boutons d'action : vert #1b7f1b (primary, success, bleu) --- */
+.btn-primary, .btn-success, .btn-bleu { --bs-btn-color: #fff; --bs-btn-bg: #1b7f1b; --bs-btn-border-color: #1b7f1b; --bs-btn-hover-color: #fff; --bs-btn-hover-bg: #146014; --bs-btn-hover-border-color: #146014; --bs-btn-active-color: #fff; --bs-btn-active-bg: #146014; --bs-btn-active-border-color: #146014; --bs-btn-disabled-bg: #1b7f1b; --bs-btn-disabled-border-color: #1b7f1b; --bs-btn-focus-shadow-rgb: 27, 127, 27; }
+.btn-outline-primary, .btn-outline-success { --bs-btn-color: #1b7f1b; --bs-btn-border-color: #1b7f1b; --bs-btn-hover-color: #fff; --bs-btn-hover-bg: #1b7f1b; --bs-btn-hover-border-color: #1b7f1b; --bs-btn-active-color: #fff; --bs-btn-active-bg: #146014; --bs-btn-active-border-color: #146014; --bs-btn-focus-shadow-rgb: 27, 127, 27; }
+
+/* --- Connexion : fond illustré « Ville et pont » (cadre centré) --- */
+.login-wrapper {
+  background: #0a4d0a url("../images/fonds/fond-d-ville-pont.svg") center bottom / cover no-repeat;
+  position: relative;
+}
+
+/* Bouton « Ouvrir » des cartes d'activités : bleu */
+.btn.btn-ouvrir-bleu { --bs-btn-color: #fff; --bs-btn-bg: #0d6efd; --bs-btn-border-color: #0d6efd; --bs-btn-hover-color: #fff; --bs-btn-hover-bg: #0a58ca; --bs-btn-hover-border-color: #0a58ca; --bs-btn-active-color: #fff; --bs-btn-active-bg: #0a58ca; --bs-btn-active-border-color: #0a58ca; --bs-btn-focus-shadow-rgb: 13, 110, 253; }

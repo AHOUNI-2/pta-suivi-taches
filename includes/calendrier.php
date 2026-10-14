@@ -76,7 +76,7 @@ foreach ($jours as $jr) {
                 'type'         => typeActiviteLabel($a['Types']),
                 'debut'        => formatDate($a['Date_debut']),
                 'fin'          => formatDate($a['Date_fin']),
-                'statut'       => statutLabel($a['Statut']),
+                'statut'       => statutLabel($a['Statut'], (int)$a['Progression']),
                 'couleur'      => statutColor($a['Statut']),
                 'duree'        => dureeCategorieLabel($cat),
                 'dureeCouleur' => dureeCategorieColor($cat),
@@ -112,7 +112,7 @@ $fondCase = function (int $n): string {
 };
 $pilule = function (int $n): string {
     $niv = chargeNiveau($n);
-    $txt = $niv === 'charge' ? '#fff' : '#12395c';
+    $txt = $niv === 'charge' ? '#fff' : '#0a4d0a';
     return 'background:' . chargeColor($niv) . ';color:' . $txt . ';';
 };
 ?>
@@ -127,17 +127,17 @@ $pilule = function (int $n): string {
 .cal-day.is-today .cal-num { color:var(--pta-navy); text-decoration:underline; }
 .cal-num { font-size:.75rem; color:var(--pta-text-muted); font-weight:600; }
 .cal-day.has-acts { border-width:2px; cursor:pointer; }
-.cal-day.has-acts .cal-num { color:#12395c; }
-.cal-day.has-acts:hover { box-shadow:0 0 0 2px rgba(15,41,66,.18); }
+.cal-day.has-acts .cal-num { color:#0a4d0a; }
+.cal-day.has-acts:hover { box-shadow:0 0 0 2px rgba(10,77,10,.18); }
 .cal-count { display:inline-flex; align-items:center; gap:4px; margin-top:8px; border:none; border-radius:999px;
              padding:3px 10px; font-size:.72rem; font-weight:700; line-height:1.3; cursor:pointer; }
 .cal-count:hover { filter:brightness(1.06); }
 
 /* Vue Semaine */
 .cal-week .cal-day { min-height:168px; }
-.cal-wk-head { font-size:.72rem; font-weight:700; color:#12395c; }
+.cal-wk-head { font-size:.72rem; font-weight:700; color:#0a4d0a; }
 .cal-chip { display:block; margin-top:4px; padding:2px 5px; border-radius:4px; background:#f4f6f9;
-            border-left:3px solid var(--cc,#0f2942); font-size:.7rem; line-height:1.3;
+            border-left:3px solid var(--cc,#0a4d0a); font-size:.7rem; line-height:1.3;
             white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .cal-more { display:block; margin-top:4px; font-size:.68rem; color:var(--pta-navy); }
 
@@ -145,7 +145,7 @@ $pilule = function (int $n): string {
 .cal-day-banner { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.5rem;
                   border:1px solid var(--cal-border); border-left:5px solid var(--cc,#adb5bd);
                   border-radius:10px; padding:12px 16px; margin-bottom:14px; }
-.cal-day-banner b { font-size:1.05rem; color:#12395c; }
+.cal-day-banner b { font-size:1.05rem; color:#0a4d0a; }
 .cal-jour-item { border:1px solid var(--cal-border); border-radius:8px; padding:10px 12px; margin-bottom:8px; }
 
 @media (max-width:576px){ .cal-day{ min-height:58px; } .cal-count{ font-size:.66rem; padding:2px 7px; } .cal-week .cal-day{ min-height:120px; } }
@@ -257,7 +257,7 @@ $pilule = function (int $n): string {
                 <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
                     <strong><?= h($a['Libelle']) ?></strong>
                     <span>
-                        <span class="badge" style="background:<?= h(statutColor($a['Statut'])) ?>"><?= h(statutLabel($a['Statut'])) ?></span>
+                        <span class="badge" style="background:<?= h(statutColor($a['Statut'])) ?>"><?= h(statutLabel($a['Statut'], (int)$a['Progression'])) ?></span>
                         <span class="badge bg-light text-dark border"><?= h(typeActiviteLabel($a['Types'])) ?></span>
                     </span>
                 </div>
@@ -270,7 +270,7 @@ $pilule = function (int $n): string {
                     Attribué à : <span class="text-primary fw-semibold"><?= h(trim(($a['ag_prenom'] ?? '') . ' ' . ($a['ag_nom'] ?? ''))) ?></span>
                     &nbsp;·&nbsp; par : <span class="text-primary fw-semibold"><?= h(trim(($a['resp_prenom'] ?? '') . ' ' . ($a['resp_nom'] ?? ''))) ?></span>
                 </div>
-                <a href="<?= BASE_URL ?>/tache_detail.php?id=<?= (int)$a['ID__activites'] ?>" class="btn btn-sm btn-outline-primary mt-2">Ouvrir la fiche</a>
+                <a href="<?= BASE_URL ?>/tache_detail.php?id=<?= (int)$a['ID__activites'] ?>" class="btn btn-sm btn-bleu mt-2">Ouvrir la fiche</a>
             </div>
         <?php endforeach; ?>
     <?php endif; ?>
@@ -328,7 +328,7 @@ document.addEventListener('DOMContentLoaded', function () {
             + '<div class="small text-muted">Attribué à : <span class="text-primary fw-semibold">' + esc(a.agent) + '</span></div>'
             + '<div class="small text-muted">Attribué par : <span class="text-primary fw-semibold">' + esc(a.resp) + '</span></div>'
             + '<div class="small text-muted">Priorité : ' + esc(a.priorite) + ' · Produit : ' + esc(a.produit) + '</div>'
-            + '<a href="' + esc(a.url) + '" class="btn btn-sm btn-outline-primary mt-2">Ouvrir la fiche</a>'
+            + '<a href="' + esc(a.url) + '" class="btn btn-sm btn-bleu mt-2">Ouvrir la fiche</a>'
             + '</div>';
     };
     modal.addEventListener('show.bs.modal', function (ev) {

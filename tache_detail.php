@@ -57,6 +57,7 @@ $estResponsable = $estAssignateur;
 
 // L'onglet « Historique » n'est pas montré aux agents.
 $voitHistorique = ($user['role'] !== 'agent');
+$peutFaireRetour = $estAssignateur || $estAdmin || $estDirecteurGlobal;   // responsable / admin / direction
 
 if (!$estExecutant && !$estAssignateur && !$estAdmin && !$estDirecteurGlobal) {
     flash('danger', "Vous n'avez pas accès à cette activité.");
@@ -79,7 +80,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verifyCsrf()) {
     try {
         if ($action === 'nouveau_compte_rendu' && $estAgent) {
             $contenu = post('Contenu');
-            $progression = max(0, min(100, (int)post('Progression')));
             $statut = post('Statut_activite');
             if ($contenu === '') throw new RuntimeException('Veuillez décrire l\'avancement réalisé.');
             if (!in_array($statut, ['a_faire', 'en_cours', 'en_attente', 'termine', 'annule'], true)) {
@@ -93,11 +93,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verifyCsrf()) {
             }
 
             $pdo->beginTransaction();
+            // L'agent ne renseigne que le statut ; progression (et statut d'une activité
+            // composée) sont recalculés automatiquement.
+            $pdo->prepare('UPDATE activites SET Statut = ? WHERE ID__activites = ?')->execute([$statut, $id]);
+            majProgression($pdo, $id);
+            $etat = $pdo->query('SELECT Statut, Progression FROM activites WHERE ID__activites = ' . $id)->fetch();
+            $progression = (int)$etat['Progression'];
+            $statutFinal = (string)$etat['Statut'];
             $pdo->prepare('INSERT INTO comptes_rendus (ID_activites, ID_agent_dpip, Contenu, Progression, Statut_activite, Piece_jointe) VALUES (?,?,?,?,?,?)')
-                ->execute([$id, $user['ID_agent_dpip'], $contenu, $progression, $statut, $pieceJointe]);
-            $pdo->prepare('UPDATE activites SET Statut = ?, Progression = ? WHERE ID__activites = ?')
-                ->execute([$statut, $progression, $id]);
-            logJournal($pdo, $id, (int)$user['ID_agent_dpip'], 'compte_rendu', "Compte rendu soumis — statut : " . statutLabel($statut) . ", progression : {$progression}%");
+                ->execute([$id, $user['ID_agent_dpip'], $contenu, $progression, $statutFinal, $pieceJointe]);
+            logJournal($pdo, $id, (int)$user['ID_agent_dpip'], 'compte_rendu', "Compte rendu soumis — statut : " . statutLabel($statutFinal) . ", progression : {$progression}%");
             $pdo->commit();
 
             createNotification($pdo, (int)$tache['ID_responsable'], 'Nouveau compte rendu', $agentInfo['Prenom'] . ' ' . $agentInfo['Nom'] . ' a soumis un compte rendu pour "' . $tache['Libelle'] . '".', '/tache_detail.php?id=' . $id);
@@ -134,6 +139,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verifyCsrf()) {
             redirect('/tache_detail.php?id=' . $id . '#besoins');
         }
 
+        if ($action === 'ajouter_retour' && $peutFaireRetour) {
+            $message = post('message');
+            if ($message === '') throw new RuntimeException('Veuillez saisir votre retour.');
+            $contexte = post('contexte');
+            if (!in_array($contexte, ['sans_reaction', 'en_cours', 'termine', 'autre'], true)) {
+                $nbCR = (int)$pdo->query('SELECT COUNT(*) FROM comptes_rendus WHERE ID_activites = ' . $id)->fetchColumn();
+                $contexte = contexteRetourAuto((string)$tache['Statut'], $nbCR);
+            }
+            $pdo->prepare(
+                'INSERT INTO retour_responsable (ID_activites, ID_responsable, ID_agent, contexte, statut_activite, message)
+                 VALUES (?, ?, ?, ?, ?, ?)'
+            )->execute([$id, (int)$user['ID_agent_dpip'], (int)$tache['ID_agent_dpip'], $contexte, $tache['Statut'], $message]);
+            logJournal($pdo, $id, (int)$user['ID_agent_dpip'], 'retour', 'Retour du responsable — ' . contexteRetourLabel($contexte));
+            createNotification(
+                $pdo,
+                (int)$tache['ID_agent_dpip'],
+                'Retour de votre responsable',
+                $user['Prenom'] . ' ' . $user['Nom'] . ' vous a fait un retour sur "' . $tache['Libelle'] . '".',
+                '/tache_detail.php?id=' . $id . '#retours'
+            );
+            flash('success', "Retour envoyé à l'agent.");
+            redirect('/tache_detail.php?id=' . $id . '#retours');
+        }
+
         if ($action === 'modifier_tache' && ($estResponsable || $estAdmin)) {
             $libelle = post('Libelle');
             $observation = post('Observation');
@@ -152,6 +181,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verifyCsrf()) {
             }
             $pdo->prepare('UPDATE activites SET Libelle=?, Observation=?, Produit=?, Types=?, Date_debut=?, Date_fin=?, Priorite=?, Statut=? WHERE ID__activites=?')
                 ->execute([$libelle, $observation, $produit, $types, $dateDebut, $dateFin, $priorite, $statut, $id]);
+            majProgression($pdo, $id);
             logJournal($pdo, $id, (int)$user['ID_agent_dpip'], 'modification', typeActiviteLabel($types) . ' modifiée par ' . $user['Prenom'] . ' ' . $user['Nom']);
             createNotification($pdo, (int)$tache['ID_agent_dpip'], 'Activité mise à jour', typeActiviteLabel($types) . ' "' . $libelle . '" a été modifiée.', '/tache_detail.php?id=' . $id);
             // Observation ajoutée / modifiée sur l'activité : la remonter à l'exécutant dans l'onglet Observations.
@@ -172,7 +202,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verifyCsrf()) {
         }
 
         if ($action === 'supprimer_tache' && ($estResponsable || $estAdmin)) {
+            $pereSupprime = !empty($tache['pere_ID']) ? (int)$tache['pere_ID'] : null;
             $pdo->prepare('DELETE FROM activites WHERE ID__activites = ?')->execute([$id]);
+            majProgression($pdo, $pereSupprime);   // le parent perd un enfant : sa progression change
             flash('success', $tacheEnfants
                 ? typeActiviteLabel($tache['Types']) . ' supprimée, ainsi que ' . count($tacheEnfants) . ' élément(s) rattaché(s).'
                 : typeActiviteLabel($tache['Types']) . ' supprimée.');
@@ -239,6 +271,22 @@ $journalDossier = $journalDossier->fetchAll();
 
 $reafectations = reafectationsActivite($pdo, $id);
 
+// Retours du responsable. L'agent qui ouvre la fiche marque les siens comme lus.
+if ($estExecutant) {
+    $pdo->prepare('UPDATE retour_responsable SET lu = 1, date_lecture = NOW()
+                   WHERE ID_activites = ? AND ID_agent = ? AND lu = 0')
+        ->execute([$id, (int)$user['ID_agent_dpip']]);
+}
+$retours = $pdo->prepare(
+    'SELECT r.*, u.Nom AS resp_nom, u.Prenom AS resp_prenom
+     FROM retour_responsable r
+     LEFT JOIN agent_dpip u ON u.ID_agent_dpip = r.ID_responsable
+     WHERE r.ID_activites = ?
+     ORDER BY r.Date_creation DESC, r.id_retour DESC'
+);
+$retours->execute([$id]);
+$retours = $retours->fetchAll();
+
 include __DIR__ . '/includes/header.php';
 ?>
 <a href="<?= BASE_URL . h($backUrl) ?>" class="text-muted small d-inline-flex align-items-center gap-1 mb-3"><i class="bi bi-arrow-left"></i> Retour</a>
@@ -247,7 +295,7 @@ include __DIR__ . '/includes/header.php';
     <div class="card-body">
         <div class="d-flex justify-content-between flex-wrap gap-2 mb-2">
             <div>
-                <span class="badge <?= statutBadgeClass($tache['Statut']) ?>"><?= h(statutLabel($tache['Statut'])) ?></span>
+                <span class="badge <?= statutBadgeClass($tache['Statut']) ?>"><?= h(statutLabel($tache['Statut'], (int)$tache['Progression'])) ?></span>
                 <span class="badge <?= prioriteBadgeClass($tache['Priorite']) ?>">Priorité <?= h(mb_strtolower(prioriteLabel($tache['Priorite']))) ?></span>
                 <span class="badge <?= typeActiviteBadgeClass($tache['Types']) ?>"><?= h(typeActiviteLabel($tache['Types'])) ?></span>
                 <?php if ($tache['dept_nom']): ?><span class="badge bg-light text-dark border"><?= h($tache['dept_nom']) ?></span><?php endif; ?>
@@ -331,7 +379,7 @@ include __DIR__ . '/includes/header.php';
                         <div class="progress"><div class="progress-bar bg-success" style="width:<?= (int)$e['Progression'] ?>%"></div></div>
                         <span class="small text-muted"><?= (int)$e['Progression'] ?>%</span>
                     </td>
-                    <td><span class="badge <?= statutBadgeClass($e['Statut']) ?>"><?= h(statutLabel($e['Statut'])) ?></span></td>
+                    <td><span class="badge <?= statutBadgeClass($e['Statut']) ?>"><?= h(statutLabel($e['Statut'], (int)$e['Progression'])) ?></span></td>
                     <td><a href="<?= BASE_URL ?>/tache_detail.php?id=<?= $e['ID__activites'] ?>" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a></td>
                 </tr>
             <?php endforeach; ?>
@@ -346,6 +394,7 @@ include __DIR__ . '/includes/header.php';
     <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#livrables">Livrables <span class="badge bg-secondary"><?= count($livrables) ?></span></a></li>
     <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#besoins">Besoins <span class="badge bg-secondary"><?= count($besoins) ?></span></a></li>
     <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#observations">Observations <span class="badge bg-secondary"><?= count($observations) ?></span></a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#retours">Retours <span class="badge bg-secondary"><?= count($retours) ?></span></a></li>
     <?php if ($reafectations): ?>
     <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#reafectations">Réaffectations <span class="badge bg-secondary"><?= count($reafectations) ?></span></a></li>
     <?php endif; ?>
@@ -376,14 +425,9 @@ include __DIR__ . '/includes/header.php';
                                 <option value="en_attente" <?= $tache['Statut'] === 'en_attente' ? 'selected' : '' ?>>En attente</option>
                                 <option value="termine" <?= $tache['Statut'] === 'termine' ? 'selected' : '' ?>>Terminé</option>
                             </select>
+                            <div class="form-text">La progression est calculée automatiquement à partir du statut et des éléments rattachés.</div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label small fw-semibold d-flex justify-content-between">
-                                <span>Progression</span> <span id="outProgression"><?= (int)$tache['Progression'] ?> %</span>
-                            </label>
-                            <input type="range" min="0" max="100" name="Progression" value="<?= (int)$tache['Progression'] ?>" class="form-range" data-progress-output="outProgression">
-                        </div>
-                        <div class="col-md-12">
                             <label class="form-label small fw-semibold">Pièce jointe (optionnel)</label>
                             <input type="file" name="piece_jointe" class="form-control">
                         </div>
@@ -541,6 +585,51 @@ include __DIR__ . '/includes/header.php';
         <?php if (empty($observations)): ?><p class="text-muted">Aucune observation.</p><?php endif; ?>
     </div>
 
+    <div class="tab-pane fade" id="retours">
+        <?php if ($peutFaireRetour): ?>
+        <div class="card mb-3">
+            <div class="card-header">Faire un retour à l'agent</div>
+            <div class="card-body">
+                <p class="small text-muted mb-2">Relancez l'agent s'il n'a pas réagi, suivez l'avancement, ou faites un retour une fois la tâche terminée. L'agent est notifié.</p>
+                <form method="post">
+                    <?= csrfField() ?>
+                    <input type="hidden" name="action" value="ajouter_retour">
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Contexte</label>
+                        <?php $autoCtx = contexteRetourAuto((string)$tache['Statut'], count($comptesRendus)); ?>
+                        <select name="contexte" class="form-select form-select-sm">
+                            <?php foreach (['sans_reaction', 'en_cours', 'termine', 'autre'] as $c): ?>
+                                <option value="<?= $c ?>" <?= $c === $autoCtx ? 'selected' : '' ?>><?= h(contexteRetourLabel($c)) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <textarea name="message" class="form-control mb-2" rows="3" required placeholder="Votre message à l'agent..."></textarea>
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-send"></i> Envoyer le retour</button>
+                </form>
+            </div>
+        </div>
+        <?php endif; ?>
+        <?php foreach ($retours as $rr): ?>
+            <div class="card mb-2">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                        <strong><?= h(trim(($rr['resp_prenom'] ?? '') . ' ' . ($rr['resp_nom'] ?? ''))) ?: 'Responsable' ?></strong>
+                        <span class="text-muted small">
+                            <span class="badge <?= contexteRetourBadge($rr['contexte']) ?>"><?= h(contexteRetourLabel($rr['contexte'])) ?></span>
+                            <?php if (!$rr['lu'] && !$estExecutant): ?><span class="badge bg-warning text-dark">non lu par l'agent</span><?php endif; ?>
+                            <?= formatDate($rr['Date_creation'], true) ?>
+                        </span>
+                    </div>
+                    <p class="mb-0 mt-1"><?= nl2br(h($rr['message'])) ?></p>
+                    <?php if ($rr['lu'] && $rr['date_lecture'] && !$estExecutant): ?>
+                        <div class="small text-success mt-1"><i class="bi bi-check2-all"></i> Lu par l'agent le <?= formatDate($rr['date_lecture'], true) ?></div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        <?php endforeach; ?>
+        <?php if (empty($retours)): ?><p class="text-muted">Aucun retour pour le moment.</p><?php endif; ?>
+    </div>
+
     <?php if ($reafectations): ?>
     <div class="tab-pane fade" id="reafectations">
         <p class="text-muted small">Chaque changement d'agent en charge de cette activité, avec sa cause.</p>
@@ -645,11 +734,15 @@ include __DIR__ . '/includes/header.php';
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small fw-semibold">Statut</label>
-                            <select name="Statut" class="form-select">
-                                <?php foreach (['a_faire','en_cours','en_attente','termine','annule'] as $s): ?>
+                            <select name="Statut" class="form-select" <?= $tacheEnfants ? 'disabled' : '' ?>>
+                                <?php foreach (['a_faire','en_cours','en_attente','termine','en_retard','annule'] as $s): ?>
                                     <option value="<?= $s ?>" <?= $tache['Statut'] === $s ? 'selected' : '' ?>><?= statutLabel($s) ?></option>
                                 <?php endforeach; ?>
                             </select>
+                            <?php if ($tacheEnfants): ?>
+                                <input type="hidden" name="Statut" value="<?= h($tache['Statut']) ?>">
+                                <div class="form-text">Recalculé automatiquement à partir des <?= count($tacheEnfants) ?> élément(s) rattaché(s) : <strong>Terminé</strong> à 100 %, sinon <strong>En cours</strong>.</div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>

@@ -15,7 +15,7 @@ $pageTitle = $pageTitle ?? 'Tableau de bord';
 <title><?= h($pageTitle) ?> — <?= h(APP_NAME) ?></title>
 <link rel="stylesheet" href="<?= BASE_URL ?>/assets/vendor/bootstrap/css/bootstrap.min.css">
 <link rel="stylesheet" href="<?= BASE_URL ?>/assets/vendor/bootstrap-icons/font/bootstrap-icons.css">
-<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css">
+<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css?v=<?= @filemtime(ROOT_PATH . "/assets/css/style.css") ?>">
 <script>window.BASE_URL = "<?= BASE_URL ?>";</script>
 </head>
 <body>

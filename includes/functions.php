@@ -55,8 +55,19 @@ function timeAgo(string $datetime): string
 }
 
 /** Libellés des statuts de tâche */
-function statutLabel(string $statut): string
+/**
+ * Libellé d'un statut. Pour « en_retard », passer $progression (colonne
+ * `Progression` de la ligne) affine le libellé pour distinguer une tâche en
+ * retard jamais commencée (0 %) d'une tâche en retard déjà entamée (> 0 %) —
+ * sans quoi les deux se ressemblent alors qu'elles n'ont rien à voir. Omettre
+ * $progression (ex. dans un menu déroulant de filtre, sans ligne précise)
+ * conserve le libellé générique « En retard ».
+ */
+function statutLabel(string $statut, ?int $progression = null): string
 {
+    if ($statut === 'en_retard' && $progression !== null) {
+        return $progression > 0 ? 'En retard (déjà commencée)' : 'En retard (non commencée)';
+    }
     return [
         'a_faire' => 'À faire',
         'en_cours' => 'En cours',
@@ -71,13 +82,13 @@ function statutLabel(string $statut): string
 function statutColor(string $statut): string
 {
     return [
-        'a_faire'    => '#7cc0f5', // bleu clair : à faire
-        'en_cours'   => '#0f2942',
-        'en_attente' => '#f77f00',
-        'termine'    => '#0d6efd', // bleu pur : déjà fait
+        'a_faire'    => '#9fd49f', // vert clair : à faire
+        'en_cours'   => '#0a4d0a',
+        'en_attente' => '#f5a623',
+        'termine'    => '#2e9e2e', // vert : terminé
         'en_retard'  => '#dc3545',
         'annule'     => '#343a40',
-    ][$statut] ?? '#7cc0f5';
+    ][$statut] ?? '#9fd49f';
 }
 
 /**
@@ -163,12 +174,12 @@ function dureeCategorieLabel(string $cat): string
     ][$cat] ?? $cat;
 }
 
-/** Couleur d'une catégorie de durée : bleu foncé / bleu clair / gris */
+/** Couleur d'une catégorie de durée : vert foncé / vert clair / gris */
 function dureeCategorieColor(string $cat): string
 {
     return [
-        'mensuelle'    => '#0f2942', // bleu foncé
-        'hebdomadaire' => '#7cc0f5', // bleu clair
+        'mensuelle'    => '#0a4d0a', // vert foncé
+        'hebdomadaire' => '#9fd49f', // vert clair
         'journaliere'  => '#adb5bd', // gris
     ][$cat] ?? '#adb5bd';
 }
@@ -260,7 +271,7 @@ function activitesDuMois(PDO $pdo, string $mois, string $filtreSql = '', array $
  */
 function activitesPeriode(PDO $pdo, string $dateDebut, string $dateFin, string $filtreSql = '', array $params = []): array
 {
-    $sql = "SELECT a.ID__activites, a.Libelle, a.Types, a.Date_debut, a.Date_fin, a.Statut, a.Priorite,
+    $sql = "SELECT a.ID__activites, a.Libelle, a.Types, a.Date_debut, a.Date_fin, a.Statut, a.Progression, a.Priorite,
                    a.Produit, a.Observation,
                    ag.Prenom AS ag_prenom, ag.Nom AS ag_nom,
                    r.Prenom AS resp_prenom, r.Nom AS resp_nom
@@ -293,10 +304,41 @@ function chargeLabel(string $niveau): string
     return ['charge' => 'Chargé', 'modere' => 'Modéré', 'relache' => 'Relâche'][$niveau] ?? $niveau;
 }
 
-/** Couleur d'un niveau de charge : bleu foncé / bleu clair / gris */
+/** Couleur d'un niveau de charge : vert foncé / vert clair / gris */
 function chargeColor(string $niveau): string
 {
-    return ['charge' => '#0f2942', 'modere' => '#7cc0f5', 'relache' => '#adb5bd'][$niveau] ?? '#adb5bd';
+    return ['charge' => '#0a4d0a', 'modere' => '#9fd49f', 'relache' => '#adb5bd'][$niveau] ?? '#adb5bd';
+}
+
+/** Libellé d'un contexte de retour du responsable */
+function contexteRetourLabel(string $contexte): string
+{
+    return [
+        'sans_reaction' => "L'agent n'a pas encore réagi",
+        'en_cours'      => "L'agent a commencé",
+        'termine'       => "L'agent a terminé",
+        'autre'         => 'Autre',
+    ][$contexte] ?? $contexte;
+}
+
+/** Badge Bootstrap d'un contexte de retour */
+function contexteRetourBadge(string $contexte): string
+{
+    return [
+        'sans_reaction' => 'bg-danger',
+        'en_cours'      => 'bg-primary',
+        'termine'       => 'bg-success',
+        'autre'         => 'bg-secondary',
+    ][$contexte] ?? 'bg-secondary';
+}
+
+/** Contexte pré-suggéré d'après le statut de l'activité et le nombre de comptes rendus */
+function contexteRetourAuto(string $statut, int $nbComptesRendus): string
+{
+    if ($statut === 'termine') return 'termine';
+    if ($statut === 'annule')  return 'autre';
+    if ($statut === 'a_faire' && $nbComptesRendus === 0) return 'sans_reaction';
+    return 'en_cours';
 }
 
 /** Date longue en français, ex. "Vendredi 12 septembre 2026" */
@@ -322,8 +364,8 @@ function typeActiviteLabel(string $type): string
 function typeActiviteBadgeClass(string $type): string
 {
     return [
-        'activite' => 'bg-primary',
-        'sous-activite' => 'bg-info text-dark',
+        'activite' => 'bg-type-activite text-white',
+        'sous-activite' => 'bg-type-sous-activite text-dark',
         'tache' => 'bg-light text-dark border',
     ][$type] ?? 'bg-light text-dark border';
 }
@@ -512,6 +554,118 @@ function roleLabelCompte(array $u): string
     return roleLabel($u['role'] ?? '');
 }
 
+/**
+ * Progression (%) d'une FEUILLE (activité/tâche sans élément rattaché) d'après
+ * son statut. L'agent ne saisit plus de pourcentage : il ne change que le statut.
+ */
+function progressionStatut(string $statut): int
+{
+    // 'en_retard' n'a pas de pourcentage fixe : voir calculerProgression(), qui
+    // fige la progression d'une feuille passée en retard sur sa valeur d'avant
+    // (0 % si elle n'avait pas commencé, 25/50 % si elle était déjà en cours),
+    // pour distinguer une tâche en retard jamais commencée d'une tâche en retard
+    // déjà entamée.
+    return [
+        'termine'    => 100,
+        'en_cours'   => 50,
+        'en_attente' => 25,
+        'a_faire'    => 0,
+        'annule'     => 0,
+    ][$statut] ?? 0;
+}
+
+/**
+ * Calcule (récursivement, depuis les éléments rattachés) la progression d'une
+ * activité / sous-activité / tâche et la stocke dans `activites.Progression`.
+ *  - feuille  : progression = progressionStatut(son statut) ; STATUT INCHANGÉ
+ *               (c'est l'agent qui le fixe via le compte rendu). Exception :
+ *               si le statut est « en_retard », la progression n'est PAS
+ *               recalculée ici — elle a été figée par actualiserTachesEnRetard()
+ *               au moment du passage en retard, pour distinguer une tâche en
+ *               retard jamais commencée (0 %) d'une tâche en retard déjà
+ *               entamée (25/50 %).
+ *  - branche  : moyenne de la progression de ses enfants directs (enfants
+ *               « annulé » exclus). Son STATUT devient DYNAMIQUE :
+ *                 100 %          -> termine
+ *                 0 %            -> a_faire
+ *                 échéance passée-> en_retard
+ *                 sinon          -> en_cours
+ *               (une branche « annulée » manuellement le reste.)
+ * Renvoie la progression calculée.
+ */
+function calculerProgression(PDO $pdo, int $activiteId): int
+{
+    $st = $pdo->prepare('SELECT Statut, Date_fin FROM activites WHERE ID__activites = ?');
+    $st->execute([$activiteId]);
+    $self = $st->fetch() ?: ['Statut' => '', 'Date_fin' => null];
+
+    $en = $pdo->prepare('SELECT ID__activites, Statut FROM activites WHERE pere_ID = ?');
+    $en->execute([$activiteId]);
+    $enfants = $en->fetchAll();
+
+    if (!$enfants) {
+        // 'en_retard' est figé au moment où actualiserTachesEnRetard() bascule le
+        // statut (voir cette fonction) : on ne le recalcule pas ici, sous peine
+        // d'écraser la distinction entre une tâche en retard jamais commencée et
+        // une tâche en retard déjà entamée.
+        if ((string)$self['Statut'] === 'en_retard') {
+            $stP = $pdo->prepare('SELECT Progression FROM activites WHERE ID__activites = ?');
+            $stP->execute([$activiteId]);
+            return (int)$stP->fetchColumn();
+        }
+        $prog = progressionStatut((string)$self['Statut']);
+        $pdo->prepare('UPDATE activites SET Progression = ? WHERE ID__activites = ?')->execute([$prog, $activiteId]);
+        return $prog;
+    }
+
+    $actifs = array_filter($enfants, fn($e) => $e['Statut'] !== 'annule');
+    if (!$actifs) {
+        $pdo->prepare('UPDATE activites SET Progression = 0 WHERE ID__activites = ?')->execute([$activiteId]);
+        return 0;
+    }
+    $vals = [];
+    foreach ($actifs as $e) {
+        $vals[] = calculerProgression($pdo, (int)$e['ID__activites']);
+    }
+    $prog = (int)round(array_sum($vals) / count($vals));
+
+    // Statut dynamique de la branche.
+    if ((string)$self['Statut'] === 'annule') {
+        $nouveauStatut = 'annule';
+    } elseif ($prog >= 100) {
+        $nouveauStatut = 'termine';
+    } elseif ($prog === 0) {
+        $nouveauStatut = 'a_faire';
+    } elseif (!empty($self['Date_fin']) && strtotime((string)$self['Date_fin']) < strtotime(date('Y-m-d'))) {
+        $nouveauStatut = 'en_retard';
+    } else {
+        $nouveauStatut = 'en_cours';
+    }
+
+    $pdo->prepare('UPDATE activites SET Progression = ?, Statut = ? WHERE ID__activites = ?')
+        ->execute([$prog, $nouveauStatut, $activiteId]);
+    return $prog;
+}
+
+/**
+ * Recalcule la progression de l'activité indiquée PUIS de tous ses ancêtres
+ * (chaîne des pere_ID). À appeler après tout changement de statut, de
+ * rattachement, d'ajout ou de suppression d'élément.
+ */
+function majProgression(PDO $pdo, ?int $activiteId): void
+{
+    if (!$activiteId) {
+        return;
+    }
+    calculerProgression($pdo, $activiteId);
+    $p = $pdo->prepare('SELECT pere_ID FROM activites WHERE ID__activites = ?');
+    $p->execute([$activiteId]);
+    $pid = $p->fetchColumn();
+    if ($pid) {
+        majProgression($pdo, (int)$pid);
+    }
+}
+
 /** Détermine si une tâche est en retard (date de fin dépassée et pas terminée/annulée) */
 function estEnRetard(string $dateFin, string $statut): bool
 {
@@ -536,9 +690,24 @@ function joursRestants(string $dateFin): int
  */
 function actualiserTachesEnRetard(PDO $pdo): void
 {
-    $pdo->exec("UPDATE activites SET Statut = 'en_retard'
+    // On fige la progression sur sa valeur AVANT le passage en retard (0 % si
+    // « à faire », jamais commencée ; 25 % si « en attente » ; 50 % si « en
+    // cours », déjà entamée) — pour ne pas afficher 50 % à une tâche en retard
+    // qui n'a jamais été commencée. Sans objet pour les branches (activité /
+    // sous-activité avec enfants) : leur progression est de toute façon
+    // recalculée juste après, à partir de leurs enfants.
+    $n = $pdo->exec("UPDATE activites
+                SET Progression = CASE Statut WHEN 'en_cours' THEN 50 WHEN 'en_attente' THEN 25 ELSE 0 END,
+                    Statut = 'en_retard'
                 WHERE Date_fin < CURDATE()
                 AND Statut NOT IN ('termine', 'annule', 'en_retard')");
+    // Un passage « en retard » peut changer la progression d'une feuille : on
+    // recalcule chaque arbre (rare — au plus une fois par jour et par tâche).
+    if ($n) {
+        foreach ($pdo->query('SELECT ID__activites FROM activites WHERE pere_ID IS NULL')->fetchAll(PDO::FETCH_COLUMN) as $rootId) {
+            calculerProgression($pdo, (int)$rootId);
+        }
+    }
 }
 
 /** Upload sécurisé d'un fichier vers un dossier donné. Retourne le nom de fichier stocké ou null. */
@@ -743,6 +912,7 @@ function actionModifLabel(string $action): string
         'livrable'          => 'Livrable',
         'besoin'            => 'Besoin exprimé',
         'observation'       => 'Observation',
+        'retour'            => 'Retour du responsable',
     ][$action] ?? ucfirst(str_replace('_', ' ', $action));
 }
 

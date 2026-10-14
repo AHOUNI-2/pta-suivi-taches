@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <title>Connexion — <?= h(APP_NAME) ?></title>
 <link rel="stylesheet" href="<?= BASE_URL ?>/assets/vendor/bootstrap/css/bootstrap.min.css">
 <link rel="stylesheet" href="<?= BASE_URL ?>/assets/vendor/bootstrap-icons/font/bootstrap-icons.css">
-<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css">
+<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css?v=<?= @filemtime(ROOT_PATH . "/assets/css/style.css") ?>">
 </head>
 <body>
 <div class="login-wrapper">
@@ -73,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <label class="form-label small fw-semibold">Mot de passe</label>
                             <input type="password" name="mot_de_passe" class="form-control" required>
                         </div>
-                        <button type="submit" class="btn btn-lg w-100 text-white" style="background:var(--pta-navy)">
+                        <button type="submit" class="btn btn-lg w-100 text-white btn-login-orange" style="background:#1b7f1b;border-color:#1b7f1b">
                             <i class="bi bi-box-arrow-in-right me-1"></i> Se connecter
                         </button>
                     </form>

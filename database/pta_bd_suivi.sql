@@ -160,6 +160,27 @@ CREATE TABLE `reafectation` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
+-- Structure de la table `retour_responsable` (retours du responsable à l'agent)
+-- --------------------------------------------------------
+
+CREATE TABLE `retour_responsable` (
+  `id_retour`        int(11) NOT NULL AUTO_INCREMENT,
+  `ID_activites`     int(11) NOT NULL,
+  `ID_responsable`   int(11) DEFAULT NULL COMMENT 'auteur du retour',
+  `ID_agent`         int(11) DEFAULT NULL COMMENT 'executant destinataire au moment du retour',
+  `contexte`         enum('sans_reaction','en_cours','termine','autre') NOT NULL DEFAULT 'autre' COMMENT 'etat de la tache au moment du retour',
+  `statut_activite`  varchar(20) DEFAULT NULL COMMENT 'instantane du statut de l activite',
+  `message`          text NOT NULL,
+  `lu`               tinyint(1) NOT NULL DEFAULT 0,
+  `date_lecture`     datetime DEFAULT NULL,
+  `Date_creation`    timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id_retour`),
+  KEY `ID_activites` (`ID_activites`),
+  KEY `ID_responsable` (`ID_responsable`),
+  KEY `ID_agent` (`ID_agent`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
 -- Structure de la table `livrables` (documents rendus pour une activité)
 -- --------------------------------------------------------
 
@@ -306,6 +327,11 @@ ALTER TABLE `reafectation`
   ADD CONSTRAINT `reafectation_nouvel_fk` FOREIGN KEY (`ID_nouvel_agent`) REFERENCES `agent_dpip` (`ID_agent_dpip`) ON DELETE SET NULL ON UPDATE CASCADE,
   ADD CONSTRAINT `reafectation_cause_fk` FOREIGN KEY (`id_cause`) REFERENCES `cause_reafectation` (`id_cause`) ON DELETE SET NULL ON UPDATE CASCADE,
   ADD CONSTRAINT `reafectation_responsable_fk` FOREIGN KEY (`ID_responsable`) REFERENCES `agent_dpip` (`ID_agent_dpip`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+ALTER TABLE `retour_responsable`
+  ADD CONSTRAINT `retour_responsable_activites_fk` FOREIGN KEY (`ID_activites`) REFERENCES `activites` (`ID__activites`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `retour_responsable_resp_fk` FOREIGN KEY (`ID_responsable`) REFERENCES `agent_dpip` (`ID_agent_dpip`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `retour_responsable_agent_fk` FOREIGN KEY (`ID_agent`) REFERENCES `agent_dpip` (`ID_agent_dpip`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 ALTER TABLE `livrables`
   ADD CONSTRAINT `livrables_activites_fk` FOREIGN KEY (`ID_activites`) REFERENCES `activites` (`ID__activites`) ON DELETE CASCADE ON UPDATE CASCADE,

@@ -66,6 +66,9 @@ if (!$actingBoss && in_array($user['role'], ['agent', 'responsable'], true)) {
             <a href="<?= BASE_URL ?>/admin/activite_form.php" class="nav-link <?= navActive('admin', 'activite_form.php', $currentDir, $currentScript) ?>">
                 <i class="bi bi-plus-circle"></i> Nouvelle activité
             </a>
+            <a href="<?= BASE_URL ?>/admin/activites_import.php" class="nav-link <?= navActive('admin', 'activites_import.php', $currentDir, $currentScript) ?>">
+                <i class="bi bi-file-earmark-arrow-up"></i> Importer depuis Excel
+            </a>
             <a href="<?= BASE_URL ?>/admin/rapports.php" class="nav-link <?= navActive('admin', 'rapports.php', $currentDir, $currentScript) ?>">
                 <i class="bi bi-bar-chart-line"></i> Rapports &amp; statistiques
             </a>

@@ -24,3 +24,6 @@ Desktop.ini
 .idea/
 *.swp
 *~
+
+# === Déploiement (config hébergeur, export de la base, archive) : ne jamais publier ===
+/deploiement/
