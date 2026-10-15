@@ -41,7 +41,7 @@ function dureeLisible(?int $s): string
 
 include __DIR__ . '/../includes/header.php';
 ?>
-<p class="text-muted">Historique des connexions et déconnexions des comptes : horodatage, adresse IP et origine. Utile pour le suivi de sécurité.</p>
+<p class="text-muted">Historique des connexions et déconnexions des comptes : horodatage, adresse IP, origine et navigateur utilisé. Utile pour le suivi de sécurité.</p>
 
 <div class="row g-3 mb-3">
     <div class="col-md-3"><div class="stat-card"><div class="stat-icon" style="background:#e7edf5;color:var(--pta-navy)"><i class="bi bi-box-arrow-in-right"></i></div><div><div class="stat-value"><?= (int)$stats['n'] ?></div><div class="stat-label">Connexions enregistrées</div></div></div></div>
@@ -85,7 +85,7 @@ include __DIR__ . '/../includes/header.php';
     <div class="table-responsive">
         <table class="table mb-0">
             <thead><tr>
-                <th>Compte</th><th>Connexion</th><th>Déconnexion</th><th>Durée</th><th>Adresse IP</th><th>Origine</th>
+                <th>Compte</th><th>Connexion</th><th>Déconnexion</th><th>Durée</th><th>Adresse IP</th><th>Origine / navigateur</th>
             </tr></thead>
             <tbody>
             <?php foreach ($lignes as $l): ?>
@@ -98,7 +98,13 @@ include __DIR__ . '/../includes/header.php';
                     <td class="small"><?= $l['date_heure_deconnexion'] ? formatDate($l['date_heure_deconnexion'], true) : '<span class="text-muted">—</span>' ?></td>
                     <td class="small"><?= dureeLisible($l['duree_s'] !== null ? (int)$l['duree_s'] : null) ?></td>
                     <td class="small font-monospace"><?= h($l['adresse_ip'] ?: '—') ?></td>
-                    <td class="small"><?= $l['pays'] ? h($l['pays']) : '<span class="text-muted">inconnue</span>' ?></td>
+                    <td class="small">
+                        <div><?= $l['pays'] ? h($l['pays']) : '<span class="text-muted">inconnue</span>' ?></div>
+                        <?php $nav = navigateurDepuisUserAgent($l['user_agent'] ?? ''); ?>
+                        <div class="text-muted" title="<?= h((string)($l['user_agent'] ?? '') ?: 'User-Agent non enregistré') ?>">
+                            <i class="bi <?= h($nav['icone']) ?>"></i> <?= h($nav['navigateur']) ?><?php if ($nav['systeme'] !== ''): ?> · <?= h($nav['systeme']) ?><?php endif; ?><?php if ($nav['appareil'] === 'Mobile'): ?> · mobile<?php endif; ?>
+                        </div>
+                    </td>
                 </tr>
             <?php endforeach; ?>
             <?php if (empty($lignes)): ?>
@@ -108,5 +114,5 @@ include __DIR__ . '/../includes/header.php';
         </table>
     </div>
 </div>
-<p class="text-muted small mt-2">300 dernières connexions affichées. L'« origine » indique « Réseau local » pour une adresse privée ; la résolution du pays nécessite une source de géolocalisation IP.</p>
+<p class="text-muted small mt-2">300 dernières connexions affichées. L'« origine » indique « Réseau local » pour une adresse privée ; la résolution du pays nécessite une source de géolocalisation IP. Le navigateur est déduit de l'en-tête envoyé par l'appareil (survolez-le pour voir l'en-tête complet) : indicatif, car il peut être modifié par l'utilisateur.</p>
 <?php include __DIR__ . '/../includes/footer.php'; ?>

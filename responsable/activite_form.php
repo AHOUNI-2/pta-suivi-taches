@@ -25,11 +25,11 @@ $data = [
 $peres = candidatsPereActivite($pdo, $edition ? $id : null);
 
 if ($edition) {
-    $stmt = $pdo->prepare('SELECT * FROM activites WHERE ID__activites = ? AND ID_responsable = ?');
-    $stmt->execute([$id, $respId]);
+    $stmt = $pdo->prepare('SELECT * FROM activites WHERE ID__activites = ?');
+    $stmt->execute([$id]);
     $existing = $stmt->fetch();
-    if (!$existing) {
-        flash('danger', "Activité introuvable ou non attribuée par vous.");
+    if (!$existing || !peutGererActivite($pdo, $user, $existing)) {
+        flash('danger', "Activité introuvable, ou ni attribuée par vous ni confiée à l'un de vos agents.");
         redirect('/responsable/activites.php');
     }
     $data = array_merge($data, [
@@ -85,11 +85,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verifyCsrf()) {
             if ($edition) {
                 $pdo->prepare(
                     'UPDATE activites SET Libelle=?, Observation=?, Types=?, Produit=?, pere_ID=?, Date_debut=?, Date_fin=?,
-                            ID_agent_dpip=?, ID_departement=?, Priorite=?, Statut=? WHERE ID__activites=? AND ID_responsable=?'
+                            ID_agent_dpip=?, ID_departement=?, Priorite=?, Statut=? WHERE ID__activites=?'
                 )->execute([
                     $data['Libelle'], $data['Observation'] ?: null, $data['Types'], $data['Produit'] ?: null, $pereId,
                     $data['Date_debut'], $data['Date_fin'], $data['ID_agent_dpip'], $deptId ?: null,
-                    $data['Priorite'], $data['Statut'], $id, $respId,
+                    $data['Priorite'], $data['Statut'], $id,
                 ]);
                 majProgression($pdo, $id);
                 if ((int)($existing['pere_ID'] ?? 0) !== (int)($pereId ?? 0)) {

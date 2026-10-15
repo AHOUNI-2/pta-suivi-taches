@@ -384,3 +384,48 @@ a { text-decoration: none; }
 
 /* Bouton « Ouvrir » des cartes d'activités : bleu */
 .btn.btn-ouvrir-bleu { --bs-btn-color: #fff; --bs-btn-bg: #0d6efd; --bs-btn-border-color: #0d6efd; --bs-btn-hover-color: #fff; --bs-btn-hover-bg: #0a58ca; --bs-btn-hover-border-color: #0a58ca; --bs-btn-active-color: #fff; --bs-btn-active-bg: #0a58ca; --bs-btn-active-border-color: #0a58ca; --bs-btn-focus-shadow-rgb: 13, 110, 253; }
+
+/* --- Listes d'activités (administration, direction, responsable) : compactes, lisibles, sans défilement horizontal ---
+   Largeurs fixes pour toutes les colonnes sauf « Libellé », qui prend l'espace restant ; les textes passent à la ligne. */
+.table-activites { --bs-table-hover-bg: #f3f8f3; font-size: .85rem; table-layout: fixed; width: 100%; }
+.table-activites thead th {
+  font-size: .7rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; line-height: 1.2;
+  color: var(--pta-text-muted); background: #f6f8fa; border-bottom: 2px solid var(--pta-border);
+  padding: .7rem .6rem; vertical-align: middle; overflow-wrap: anywhere;
+}
+.table-activites tbody td { padding: .6rem; vertical-align: middle; overflow-wrap: anywhere; }
+.table-activites .badge { font-size: .72rem; }
+.table-activites .col-type { width: 100px; }
+.table-activites .col-libelle { line-height: 1.35; }                 /* largeur automatique : tout l'espace restant */
+.table-activites .col-personne { width: 130px; }
+.table-activites .col-resp { width: 135px; }
+.table-activites .col-dept { width: 74px; text-align: center; }
+.table-activites .col-prio { width: 92px; }
+.table-activites .col-echeance { width: 92px; white-space: nowrap; }
+.table-activites .col-progression { width: 112px; }
+.table-activites .col-statut { width: 104px; }
+.table-activites .col-statut .badge { white-space: normal; text-align: left; line-height: 1.25; }
+.table-activites .col-actions { width: 118px; white-space: nowrap; text-align: right; }
+.table-activites .prog { display: flex; align-items: center; gap: .4rem; }
+.table-activites .prog .progress { flex: 1 1 auto; min-width: 36px; }
+.table-activites .prog-val { font-size: .75rem; color: var(--pta-text-muted); min-width: 2.3rem; text-align: right; white-space: nowrap; }
+.table-activites .actions { display: flex; flex-wrap: nowrap; justify-content: flex-end; align-items: center; gap: .3rem; }
+.table-activites .actions form { margin: 0; }
+.table-activites .actions .btn { display: inline-flex; align-items: center; justify-content: center; width: 1.9rem; height: 1.9rem; padding: 0; }
+/* Écrans moyens (portables) : un peu plus compact pour garder le libellé lisible */
+@media (max-width: 1500px) {
+  .table-activites { font-size: .8rem; }
+  .table-activites thead th, .table-activites tbody td { padding-left: .45rem; padding-right: .45rem; }
+  .table-activites .col-personne { width: 118px; }
+  .table-activites .col-resp { width: 122px; }
+  .table-activites .col-type { width: 92px; }
+  .table-activites .col-statut { width: 98px; }
+  .table-activites .col-progression { width: 100px; }
+}
+/* Écrans étroits : largeur minimale confortable (le tableau défile), et la colonne Actions reste collée à droite */
+@media (max-width: 1320px) {
+  .table-activites { min-width: 1060px; }
+  .table-activites .col-actions { position: sticky; right: 0; z-index: 1; background: #fff; box-shadow: -8px 0 8px -8px rgba(0, 0, 0, .25); }
+  .table-activites thead .col-actions { background: #f6f8fa; }
+  .table-activites tbody tr:hover .col-actions { background: #f3f8f3; }
+}

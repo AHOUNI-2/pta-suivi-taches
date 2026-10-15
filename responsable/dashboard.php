@@ -55,7 +55,14 @@ $derniersCr->execute([$respId]);
 $derniersCr = $derniersCr->fetchAll();
 
 include __DIR__ . '/../includes/header.php';
+$nbRecoNonLues = nbRecommandationsNonLues($pdo, $respId);
 ?>
+<?php if ($nbRecoNonLues > 0): ?>
+    <div class="alert alert-primary d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span><i class="bi bi-megaphone"></i> Vous avez <strong><?= $nbRecoNonLues ?></strong> recommandation<?= $nbRecoNonLues > 1 ? 's' : '' ?> non lue<?= $nbRecoNonLues > 1 ? 's' : '' ?> de votre supérieur hiérarchique.</span>
+        <a href="<?= BASE_URL ?>/responsable/recommandations.php" class="btn btn-sm btn-primary">Lire</a>
+    </div>
+<?php endif; ?>
 <div class="card mb-4">
     <div class="card-header">Calendrier des activités (les miennes et celles que j'ai attribuées)</div>
     <div class="card-body"><?php include __DIR__ . '/../includes/calendrier.php'; ?></div>

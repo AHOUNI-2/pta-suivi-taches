@@ -48,8 +48,13 @@ $idAssignateurEffectif = $directeurCtx ? (int)$directeurCtx['ID_agent_dpip'] : (
 $estExecutant  = (int)$tache['ID_agent_dpip'] === (int)$user['ID_agent_dpip'];           // celui qui exécute (agent ou sous-directeur)
 $estAssignateur = in_array($roleAssignateur, ['responsable', 'directeur'], true)
                   && (int)$tache['ID_responsable'] === $idAssignateurEffectif;             // celui qui a attribué (ou sa secrétaire)
-$estAdmin = $user['role'] === 'admin';
+$estAdmin = estAdministrateurActif($user);
+// Responsable hiérarchique de l'exécutant (même si l'activité a été attribuée par quelqu'un d'autre).
+$estSuperviseur = $user['role'] === 'responsable' && !$estAssignateur
+                  && estSuperviseurDe($pdo, (int)$user['ID_agent_dpip'], (int)$tache['ID_agent_dpip']);
 $estDirecteurGlobal = $roleAssignateur === 'directeur';                                    // le directeur voit toutes les activités
+// Modifier / supprimer : administrateur, direction, responsable qui a attribué ou responsable de l'exécutant.
+$peutGerer = $estAdmin || $estDirecteurGlobal || $estAssignateur || $estSuperviseur;
 
 // Alias rétro-compatibles utilisés plus bas dans la page
 $estAgent = $estExecutant;
@@ -57,9 +62,9 @@ $estResponsable = $estAssignateur;
 
 // L'onglet « Historique » n'est pas montré aux agents.
 $voitHistorique = ($user['role'] !== 'agent');
-$peutFaireRetour = $estAssignateur || $estAdmin || $estDirecteurGlobal;   // responsable / admin / direction
+$peutFaireRetour = $estAssignateur || $estSuperviseur || $estAdmin || $estDirecteurGlobal;   // responsable / admin / direction
 
-if (!$estExecutant && !$estAssignateur && !$estAdmin && !$estDirecteurGlobal) {
+if (!$estExecutant && !$estAssignateur && !$estSuperviseur && !$estAdmin && !$estDirecteurGlobal) {
     flash('danger', "Vous n'avez pas accès à cette activité.");
     redirect(dashboardUrlForRole($user['role']));
 }
@@ -70,7 +75,7 @@ if ($estDirecteurGlobal) $backUrl = '/directeur/activites.php';
 if ($estAdmin) $backUrl = '/admin/activites.php';
 if ($estExecutant && $user['role'] === 'responsable') $backUrl = '/responsable/activites_recues.php';
 if ($estExecutant && $user['role'] === 'agent') $backUrl = '/agent/mes_taches.php';
-if ($estAssignateur && $user['role'] === 'responsable') $backUrl = '/responsable/activites.php';
+if (($estAssignateur || $estSuperviseur) && $user['role'] === 'responsable') $backUrl = '/responsable/activites.php';
 
 $agentInfo = ['Prenom' => $tache['ag_prenom'], 'Nom' => $tache['ag_nom'], 'Mail' => $tache['ag_mail'], 'Mail_Pro' => $tache['ag_mail_pro']];
 $respInfo = ['Prenom' => $tache['resp_prenom'], 'Nom' => $tache['resp_nom'], 'Mail' => $tache['resp_mail'], 'Mail_Pro' => $tache['resp_mail_pro']];
@@ -163,7 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verifyCsrf()) {
             redirect('/tache_detail.php?id=' . $id . '#retours');
         }
 
-        if ($action === 'modifier_tache' && ($estResponsable || $estAdmin)) {
+        if ($action === 'modifier_tache' && $peutGerer) {
             $libelle = post('Libelle');
             $observation = post('Observation');
             $produit = post('Produit');
@@ -201,9 +206,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verifyCsrf()) {
             redirect('/tache_detail.php?id=' . $id . '#comptes-rendus');
         }
 
-        if ($action === 'supprimer_tache' && ($estResponsable || $estAdmin)) {
+        if ($action === 'supprimer_tache' && $peutGerer) {
             $pereSupprime = !empty($tache['pere_ID']) ? (int)$tache['pere_ID'] : null;
             $pdo->prepare('DELETE FROM activites WHERE ID__activites = ?')->execute([$id]);
+            logModif($pdo, 'activites', $id, 'suppression', typeActiviteLabel($tache['Types']) . ' « ' . mb_substr($tache['Libelle'], 0, 120) . ' » supprimée'
+                . ($tacheEnfants ? ' avec ' . count($tacheEnfants) . ' élément(s) rattaché(s)' : ''));
             majProgression($pdo, $pereSupprime);   // le parent perd un enfant : sa progression change
             flash('success', $tacheEnfants
                 ? typeActiviteLabel($tache['Types']) . ' supprimée, ainsi que ' . count($tacheEnfants) . ' élément(s) rattaché(s).'
@@ -300,9 +307,9 @@ include __DIR__ . '/includes/header.php';
                 <span class="badge <?= typeActiviteBadgeClass($tache['Types']) ?>"><?= h(typeActiviteLabel($tache['Types'])) ?></span>
                 <?php if ($tache['dept_nom']): ?><span class="badge bg-light text-dark border"><?= h($tache['dept_nom']) ?></span><?php endif; ?>
             </div>
-            <?php if ($estResponsable || $estAdmin): ?>
+            <?php if ($peutGerer): ?>
                 <div class="d-flex gap-2">
-                    <?php if ($estResponsable || $estAdmin): ?>
+                    <?php if ($peutGerer): ?>
                         <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEdit"><i class="bi bi-pencil"></i> Modifier</button>
                     <?php endif; ?>
                     <form method="post" data-confirm="Supprimer définitivement cette entrée et toutes ses données associées<?= $tacheEnfants ? ' (ainsi que les ' . count($tacheEnfants) . ' élément(s) qui lui sont rattachés)' : '' ?> ?">
@@ -690,7 +697,7 @@ include __DIR__ . '/includes/header.php';
     <?php endif; ?>
 </div>
 
-<?php if ($estResponsable || $estAdmin): ?>
+<?php if ($peutGerer): ?>
 <div class="modal fade" id="modalEdit" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">

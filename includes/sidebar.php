@@ -55,6 +55,9 @@ if (!$actingBoss && in_array($user['role'], ['agent', 'responsable'], true)) {
             <a href="<?= BASE_URL ?>/directeur/comptes_rendus.php" class="nav-link <?= navActive('directeur', 'comptes_rendus.php', $currentDir, $currentScript) ?>">
                 <i class="bi bi-chat-square-text"></i> Comptes rendus
             </a>
+            <a href="<?= BASE_URL ?>/directeur/recommandations.php" class="nav-link <?= navActive('directeur', 'recommandations.php', $currentDir, $currentScript) ?>">
+                <i class="bi bi-megaphone"></i> Recommandations
+            </a>
         <?php elseif ($navRole === 'admin'): ?>
             <div class="nav-section-title">Pilotage</div>
             <a href="<?= BASE_URL ?>/admin/dashboard.php" class="nav-link <?= navActive('admin', 'dashboard.php', $currentDir, $currentScript) ?>">
@@ -68,6 +71,9 @@ if (!$actingBoss && in_array($user['role'], ['agent', 'responsable'], true)) {
             </a>
             <a href="<?= BASE_URL ?>/admin/activites_import.php" class="nav-link <?= navActive('admin', 'activites_import.php', $currentDir, $currentScript) ?>">
                 <i class="bi bi-file-earmark-arrow-up"></i> Importer depuis Excel
+            </a>
+            <a href="<?= BASE_URL ?>/admin/activites_export.php" class="nav-link <?= navActive('admin', 'activites_export.php', $currentDir, $currentScript) ?>">
+                <i class="bi bi-file-earmark-excel"></i> Exporter vers Excel
             </a>
             <a href="<?= BASE_URL ?>/admin/rapports.php" class="nav-link <?= navActive('admin', 'rapports.php', $currentDir, $currentScript) ?>">
                 <i class="bi bi-bar-chart-line"></i> Rapports &amp; statistiques
@@ -102,6 +108,11 @@ if (!$actingBoss && in_array($user['role'], ['agent', 'responsable'], true)) {
             <a href="<?= BASE_URL ?>/activites_recues.php" class="nav-link <?= navActive('', 'activites_recues.php', $currentDir, $currentScript) ?>">
                 <i class="bi bi-inbox"></i> Activités qui me sont confiées
             </a>
+            <?php $nbReco = nbRecommandationsNonLues($pdo, (int)$user['ID_agent_dpip']); ?>
+            <a href="<?= BASE_URL ?>/responsable/recommandations.php" class="nav-link <?= navActive('responsable', 'recommandations.php', $currentDir, $currentScript) ?>">
+                <i class="bi bi-megaphone"></i> Recommandations reçues
+                <?php if ($nbReco > 0): ?><span class="badge rounded-pill badge-count"><?= $nbReco ?></span><?php endif; ?>
+            </a>
             <div class="nav-section-title">Suivi</div>
             <a href="<?= BASE_URL ?>/responsable/comptes_rendus.php" class="nav-link <?= navActive('responsable', 'comptes_rendus.php', $currentDir, $currentScript) ?>">
                 <i class="bi bi-chat-square-text"></i> Comptes rendus
@@ -123,6 +134,27 @@ if (!$actingBoss && in_array($user['role'], ['agent', 'responsable'], true)) {
             <a href="<?= BASE_URL ?>/agent/comptes_rendus.php" class="nav-link <?= navActive('agent', 'comptes_rendus.php', $currentDir, $currentScript) ?>">
                 <i class="bi bi-chat-square-text"></i> Mes comptes rendus
             </a>
+        <?php endif; ?>
+
+        <?php if ($navRole === 'responsable' && estAdministrateurActif($user)): ?>
+            <?php /* Responsable Service ayant aussi la fonction « Administrateur » : son menu de responsable + l'espace Administration */ ?>
+            <div class="nav-section-title">Administration</div>
+            <?php foreach ([
+                ['dashboard.php', 'bi-speedometer2', 'Tableau de bord admin'],
+                ['activites.php', 'bi-list-task', 'Toutes les activités'],
+                ['rapports.php', 'bi-bar-chart-line', 'Rapports &amp; statistiques'],
+                ['activites_import.php', 'bi-file-earmark-arrow-up', 'Importer depuis Excel'],
+                ['activites_export.php', 'bi-file-earmark-excel', 'Exporter vers Excel'],
+                ['utilisateurs.php', 'bi-people', 'Utilisateurs'],
+                ['departements.php', 'bi-diagram-3', 'Départements'],
+                ['cause_reafectation.php', 'bi-arrow-left-right', 'Causes de réaffectation'],
+                ['connexions.php', 'bi-shield-lock', 'Journal des connexions'],
+                ['historique.php', 'bi-clock-history', 'Historique des modifications'],
+            ] as [$page, $icone, $libelle]): ?>
+                <a href="<?= BASE_URL ?>/admin/<?= $page ?>" class="nav-link <?= navActive('admin', $page, $currentDir, $currentScript) ?>">
+                    <i class="bi <?= $icone ?>"></i> <?= $libelle ?>
+                </a>
+            <?php endforeach; ?>
         <?php endif; ?>
 
         <?php if (!$actingBoss && $user['role'] !== 'agent' && $user['role'] !== 'responsable' && !empty($user['est_agent'])): ?>

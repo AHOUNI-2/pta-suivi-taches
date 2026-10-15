@@ -27,7 +27,9 @@ function requireLogin(): array
 function requireRole(array $roles): array
 {
     $user = requireLogin();
-    if (!in_array($user['role'], $roles, true)) {
+    // Un Responsable Service ayant la fonction « Administrateur » accède aussi aux pages réservées aux admins.
+    $autorise = in_array($user['role'], $roles, true) || (in_array('admin', $roles, true) && estAdministrateurActif($user));
+    if (!$autorise) {
         http_response_code(403);
         flash('danger', "Vous n'avez pas accès à cette page.");
         redirect(dashboardUrlForRole($user['role']));

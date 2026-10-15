@@ -71,6 +71,7 @@ CREATE TABLE `agent_dpip` (
   `type_responsable` enum('service','sous_directeur') DEFAULT NULL COMMENT 'precise le type quand role = responsable',
   `est_responsable_service` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'fonction secondaire : peut etre designe comme Responsable Service / Sous-directeur',
   `est_agent` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'fonction secondaire : peut recevoir des activites comme un agent',
+  `est_admin` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'fonction supplementaire : administrateur (pour un responsable service)',
   `ID_responsable` int(11) DEFAULT NULL COMMENT 'responsable hierarchique direct de l''agent (NULL pour admin/directeur/responsable de tete)',
   `ID_secretaire` int(11) DEFAULT NULL COMMENT 'compte designe par un directeur pour agir en son nom',
   `statut_compte` enum('actif','inactif','en_attente','non_active') NOT NULL DEFAULT 'actif' COMMENT 'non_active=cree non active par admin ; en_attente=active, mot de passe a definir ; actif=ok ; inactif=desactive',
@@ -178,6 +179,28 @@ CREATE TABLE `retour_responsable` (
   KEY `ID_activites` (`ID_activites`),
   KEY `ID_responsable` (`ID_responsable`),
   KEY `ID_agent` (`ID_agent`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Structure de la table `recommandation` (recommandations du Directeur à ses
+-- Responsables Service / Sous-directeurs)
+-- --------------------------------------------------------
+
+CREATE TABLE `recommandation` (
+  `id_recommandation` int(11) NOT NULL AUTO_INCREMENT,
+  `ID_emetteur` int(11) NOT NULL COMMENT 'superieur hierarchique (directeur) qui adresse la recommandation',
+  `ID_destinataire` int(11) NOT NULL COMMENT 'responsable service ou sous-directeur destinataire',
+  `objet` varchar(150) NOT NULL,
+  `message` text NOT NULL,
+  `importance` enum('normale','importante','urgente') NOT NULL DEFAULT 'normale',
+  `lu` tinyint(1) NOT NULL DEFAULT 0,
+  `date_lecture` datetime DEFAULT NULL,
+  `Date_creation` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id_recommandation`),
+  KEY `destinataire_lu` (`ID_destinataire`, `lu`),
+  KEY `ID_emetteur` (`ID_emetteur`),
+  CONSTRAINT `recommandation_emetteur_fk` FOREIGN KEY (`ID_emetteur`) REFERENCES `agent_dpip` (`ID_agent_dpip`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `recommandation_destinataire_fk` FOREIGN KEY (`ID_destinataire`) REFERENCES `agent_dpip` (`ID_agent_dpip`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------

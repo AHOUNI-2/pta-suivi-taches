@@ -11,7 +11,7 @@ $tempPassword = null;
 $data = [
     'Nom' => '', 'Prenom' => '', 'Matricule' => '', 'Mail' => '', 'Mail_Pro' => '',
     'Contact' => '', 'Profil' => '', 'ID_departement' => '', 'role' => 'agent', 'type_responsable' => null, 'ID_responsable' => '',
-    'est_responsable_service' => 0, 'est_agent' => 0, 'statut_compte' => 'actif',
+    'est_responsable_service' => 0, 'est_agent' => 0, 'est_admin' => 0, 'statut_compte' => 'actif',
 ];
 
 if ($edition) {
@@ -46,10 +46,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verifyCsrf()) {
         $data['role'] = $roleBrut;
         $data['type_responsable'] = null;
     }
-    $data['ID_responsable'] = post('ID_responsable');
+    // Un Responsable Service et un Sous-directeur ont pour responsable hiérarchique le Directeur
+    // (champ ID_directeur) ; les agents se rattachent à un Responsable Service / Sous-directeur (champ ID_responsable).
+    $rattacheDirecteur = in_array($roleBrut, ['responsable', 'sous_directeur'], true);
+    $data['ID_responsable'] = $rattacheDirecteur ? post('ID_directeur') : post('ID_responsable');
     // Fonctions secondaires : un « responsable » / « agent » l'a par nature, sinon case cochée.
     $data['est_responsable_service'] = ($data['role'] === 'responsable' || post('est_responsable_service') === '1') ? 1 : 0;
     $data['est_agent'] = ($data['role'] === 'agent' || post('est_agent') === '1') ? 1 : 0;
+    // Fonction supplémentaire « Administrateur » : réservée au Responsable Service (le Sous-directeur n'y a pas droit).
+    $data['est_admin'] = ($roleBrut === 'responsable' && post('est_admin') === '1') ? 1 : 0;
     $data['statut_compte'] = post('statut_compte', 'actif');
 
     if ($data['Nom'] === '' || $data['Prenom'] === '' || $data['Matricule'] === '') {
@@ -64,9 +69,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verifyCsrf()) {
     if (!in_array($data['role'], ['admin', 'directeur', 'responsable', 'agent'], true)) {
         $errors[] = 'Rôle invalide.';
     }
-    $besoinResponsable = ($data['role'] === 'agent' || $data['est_agent'] === 1);
+    $besoinResponsable = ($data['role'] === 'agent' || $data['est_agent'] === 1 || $rattacheDirecteur);
     if ($besoinResponsable && $data['ID_responsable'] === '') {
-        $errors[] = 'Une personne qui reçoit des activités (agent) doit être rattachée à un Responsable Service / Sous-directeur.';
+        $errors[] = $rattacheDirecteur
+            ? 'Un Responsable Service ou un Sous-directeur doit être rattaché à un Directeur (son responsable hiérarchique).'
+            : 'Une personne qui reçoit des activités (agent) doit être rattachée à un Responsable Service / Sous-directeur.';
+    }
+    if ($rattacheDirecteur && $data['ID_responsable'] !== '') {
+        $chk = $pdo->prepare("SELECT 1 FROM agent_dpip WHERE ID_agent_dpip = ? AND role = 'directeur' AND statut_compte = 'actif'");
+        $chk->execute([(int)$data['ID_responsable']]);
+        if (!$chk->fetchColumn()) {
+            $errors[] = 'Le responsable d\'un Responsable Service ou d\'un Sous-directeur doit être un Directeur actif.';
+        }
     }
     $idResponsable = $besoinResponsable && $data['ID_responsable'] !== '' ? (int)$data['ID_responsable'] : null;
     if ($idResponsable === $id && $edition) {
@@ -77,10 +91,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verifyCsrf()) {
         try {
             if ($edition) {
                 $pdo->prepare(
-                    'UPDATE agent_dpip SET Nom=?, Prenom=?, Matricule=?, Mail=?, Mail_Pro=?, Contact=?, Profil=?, ID_departement=?, role=?, type_responsable=?, est_responsable_service=?, est_agent=?, ID_responsable=?, statut_compte=? WHERE ID_agent_dpip=?'
+                    'UPDATE agent_dpip SET Nom=?, Prenom=?, Matricule=?, Mail=?, Mail_Pro=?, Contact=?, Profil=?, ID_departement=?, role=?, type_responsable=?, est_responsable_service=?, est_agent=?, est_admin=?, ID_responsable=?, statut_compte=? WHERE ID_agent_dpip=?'
                 )->execute([
                     $data['Nom'], $data['Prenom'], $data['Matricule'], $data['Mail'], $data['Mail_Pro'] ?: null,
-                    $data['Contact'] ?: null, $data['Profil'] ?: null, $data['ID_departement'], $data['role'], $data['type_responsable'], $data['est_responsable_service'], $data['est_agent'], $idResponsable, $data['statut_compte'], $id,
+                    $data['Contact'] ?: null, $data['Profil'] ?: null, $data['ID_departement'], $data['role'], $data['type_responsable'], $data['est_responsable_service'], $data['est_agent'], $data['est_admin'], $idResponsable, $data['statut_compte'], $id,
                 ]);
                 if ($id === (int)$user['ID_agent_dpip']) {
                     refreshCurrentUser($pdo);
@@ -90,12 +104,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verifyCsrf()) {
                 redirect('/admin/utilisateurs.php');
             } else {
                 $pdo->prepare(
-                    'INSERT INTO agent_dpip (Nom, Prenom, Matricule, Mail, Mail_Pro, Contact, Profil, ID_departement, mot_de_passe, role, type_responsable, est_responsable_service, est_agent, ID_responsable, statut_compte)
-                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+                    'INSERT INTO agent_dpip (Nom, Prenom, Matricule, Mail, Mail_Pro, Contact, Profil, ID_departement, mot_de_passe, role, type_responsable, est_responsable_service, est_agent, est_admin, ID_responsable, statut_compte)
+                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
                 )->execute([
                     $data['Nom'], $data['Prenom'], $data['Matricule'], $data['Mail'], $data['Mail_Pro'] ?: null,
                     $data['Contact'] ?: null, $data['Profil'] ?: null, $data['ID_departement'], '',
-                    $data['role'], $data['type_responsable'], $data['est_responsable_service'], $data['est_agent'], $idResponsable, 'non_active',
+                    $data['role'], $data['type_responsable'], $data['est_responsable_service'], $data['est_agent'], $data['est_admin'], $idResponsable, 'non_active',
                 ]);
                 logModif($pdo, 'agent_dpip', (int)$pdo->lastInsertId(), 'creation', 'Compte « ' . $data['Prenom'] . ' ' . $data['Nom'] . ' » créé (' . roleLabelCompte($data) . ', matricule ' . $data['Matricule'] . ')');
                 flash('success', "Compte créé (matricule « " . $data['Matricule'] . " »). Il est « À activer » : cliquez sur le bouton ✔ dans la liste pour l'activer, ensuite l'utilisateur pourra définir son mot de passe via « Première connexion ».");
@@ -111,6 +125,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verifyCsrf()) {
 
 $departements = $pdo->query('SELECT * FROM departement ORDER BY Libelle')->fetchAll();
 $responsables = $pdo->query("SELECT * FROM agent_dpip WHERE " . sqlEstRespService() . " AND statut_compte = 'actif' ORDER BY Nom")->fetchAll();
+$directeurs = $pdo->query("SELECT * FROM agent_dpip WHERE role = 'directeur' AND statut_compte = 'actif' ORDER BY Nom")->fetchAll();
+// Directeur proposé d'office pour un Responsable Service / Sous-directeur : celui déjà enregistré,
+// sinon l'unique directeur actif.
+$directeurChoisi = (string)($data['ID_responsable'] ?? '');
+if (!in_array($directeurChoisi, array_map('strval', array_column($directeurs, 'ID_agent_dpip')), true) && count($directeurs) === 1) {
+    $directeurChoisi = (string)$directeurs[0]['ID_agent_dpip'];
+}
 
 include __DIR__ . '/../includes/header.php';
 ?>
@@ -194,12 +215,35 @@ include __DIR__ . '/../includes/header.php';
                                 <div class="form-text text-warning">Aucun responsable service actif n'existe encore.</div>
                             <?php endif; ?>
                         </div>
+                        <div class="col-md-6" id="directeurWrapper" style="display:none;">
+                            <label class="form-label small fw-semibold">Directeur (responsable hiérarchique) *</label>
+                            <select name="ID_directeur" id="directeurSelect" class="form-select">
+                                <option value="">— Choisir —</option>
+                                <?php foreach ($directeurs as $dir): ?>
+                                    <option value="<?= $dir['ID_agent_dpip'] ?>" <?= $directeurChoisi === (string)$dir['ID_agent_dpip'] ? 'selected' : '' ?>>
+                                        <?= h($dir['Prenom'] . ' ' . $dir['Nom']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <div class="form-text<?= empty($directeurs) ? ' text-warning' : '' ?>">
+                                <?= empty($directeurs) ? 'Aucun Directeur actif n\'existe encore : créez d\'abord le compte du Directeur.' : 'Un Responsable Service ou un Sous-directeur rend compte au Directeur.' ?>
+                            </div>
+                        </div>
                         <div class="col-12" id="respServiceWrapper">
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" name="est_responsable_service" id="respServiceCheck" value="1" <?= !empty($data['est_responsable_service']) ? 'checked' : '' ?>>
                                 <label class="form-check-label small" for="respServiceCheck">
                                     <strong>Fonction supplémentaire : Responsable Service / Sous-directeur</strong>
                                     <span class="text-muted d-block">Coché, cette personne (quel que soit son rôle principal, ex. Administrateur) pourra être désignée comme responsable d'un agent et attributaire d'activités. Son nom apparaîtra dans la colonne « Responsable » des utilisateurs qui lui sont rattachés.</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-12" id="adminWrapper" style="display:none;">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="est_admin" id="adminCheck" value="1" <?= !empty($data['est_admin']) ? 'checked' : '' ?>>
+                                <label class="form-check-label small" for="adminCheck">
+                                    <strong>Fonction supplémentaire : Administrateur</strong>
+                                    <span class="text-muted d-block">Coché, ce Responsable Service garde son espace de responsable (attribuer des activités à ses agents, comptes rendus…) et obtient en plus l'espace Administration : utilisateurs, départements, historique, rapports, toutes les activités. Son responsable reste le Directeur.</span>
                                 </label>
                             </div>
                         </div>
@@ -246,21 +290,34 @@ function toggleResponsable() {
 
     // Fonction « Agent » implicite pour le rôle principal Agent : case cochée + verrouillée.
     var agentWrap = document.getElementById('agentWrapper');
+    var rattacheDir = (role === 'responsable' || role === 'sous_directeur');
+    // Case cochée d'office : on la décoche quand on quitte ce rôle (sinon elle serait envoyée à tort).
     if (role === 'agent') {
+        if (!agentChk.checked) { agentChk.dataset.auto = '1'; }
         agentChk.checked = true; agentChk.disabled = true; agentWrap.style.display = 'none';
     } else {
-        agentChk.disabled = false; agentWrap.style.display = '';
+        if (agentChk.dataset.auto === '1') { agentChk.checked = false; agentChk.dataset.auto = '0'; }
+        agentChk.disabled = false; agentWrap.style.display = rattacheDir ? 'none' : '';
     }
 
     // Le rattachement à un Responsable Service est requis pour tout « agent » (rôle ou fonction).
-    var recoitActivites = (role === 'agent') || agentChk.checked;
+    // Un Responsable Service ou un Sous-directeur, lui, est rattaché au Directeur.
+    var recoitActivites = (role === 'agent') || (agentChk.checked && !rattacheDir);
     document.getElementById('responsableWrapper').style.display = recoitActivites ? '' : 'none';
+    document.getElementById('directeurWrapper').style.display = rattacheDir ? '' : 'none';
+    // « Administrateur » en fonction supplémentaire : proposé uniquement pour un Responsable Service.
+    var adminWrap = document.getElementById('adminWrapper');
+    adminWrap.style.display = (role === 'responsable') ? '' : 'none';
+    if (role !== 'responsable') { document.getElementById('adminCheck').checked = false; }
+    document.getElementById('directeurSelect').required = rattacheDir;
 
     // Fonction « Responsable Service » implicite pour un Responsable Service ou un Sous-directeur.
     var respWrap = document.getElementById('respServiceWrapper');
     if (estResp) {
+        if (!respChk.checked) { respChk.dataset.auto = '1'; }
         respChk.checked = true; respChk.disabled = true; respWrap.style.display = 'none';
     } else {
+        if (respChk.dataset.auto === '1') { respChk.checked = false; respChk.dataset.auto = '0'; }
         respChk.disabled = false; respWrap.style.display = '';
     }
 }

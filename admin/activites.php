@@ -42,6 +42,7 @@ include __DIR__ . '/../includes/header.php';
     <p class="text-muted mb-0">Toutes les activités, sous-activités et tâches, tous responsables confondus.</p>
     <div class="d-flex gap-2">
         <a href="<?= BASE_URL ?>/admin/activites_import.php" class="btn btn-outline-secondary"><i class="bi bi-file-earmark-arrow-up"></i> Importer depuis Excel</a>
+        <a href="<?= BASE_URL ?>/admin/activites_export.php" class="btn btn-outline-secondary"><i class="bi bi-file-earmark-excel"></i> Exporter vers Excel</a>
         <a href="<?= BASE_URL ?>/admin/activite_form.php" class="btn btn-bleu"><i class="bi bi-plus-lg"></i> Nouvelle activité / tâche</a>
     </div>
 </div>
@@ -97,34 +98,45 @@ include __DIR__ . '/../includes/header.php';
 
 <div class="card">
     <div class="table-responsive">
-        <table class="table mb-0">
-            <thead><tr><th>Type</th><th>Libellé</th><th>Agent</th><th>Responsable Service / Sous-directeur</th><th>Dépt.</th><th>Échéance</th><th>Progression</th><th>Statut</th><th></th></tr></thead>
+        <table class="table table-hover table-activites mb-0">
+            <thead><tr>
+                <th class="col-type">Type</th><th class="col-libelle">Libellé</th><th class="col-personne">Agent</th><th class="col-resp">Responsable Service / Sous-directeur</th><th class="col-dept">Dépt.</th><th class="col-echeance">Échéance</th><th class="col-progression">Progression</th><th class="col-statut">Statut</th><th class="col-actions">Actions</th>
+            </tr></thead>
             <tbody>
             <?php foreach ($activites as $a): ?>
                 <tr>
-                    <td><span class="badge <?= typeActiviteBadgeClass($a['Types']) ?>"><?= h(typeActiviteLabel($a['Types'])) ?></span></td>
-                    <td>
-                        <?= h($a['Libelle']) ?>
+                    <td class="col-type"><span class="badge <?= typeActiviteBadgeClass($a['Types']) ?>"><?= h(typeActiviteLabel($a['Types'])) ?></span></td>
+                    <td class="col-libelle">
+                        <div class="fw-medium"><?= h($a['Libelle']) ?></div>
                         <?php if (!empty($a['pere_libelle'])): ?>
-                            <div class="small text-muted"><i class="bi bi-arrow-return-right"></i> <?= h(typeActiviteLabel($a['pere_type'])) ?> : <?= h($a['pere_libelle']) ?></div>
+                            <div class="small text-muted mt-1"><i class="bi bi-arrow-return-right"></i> <?= h(typeActiviteLabel($a['pere_type'])) ?> : <?= h($a['pere_libelle']) ?></div>
                         <?php endif; ?>
                     </td>
-                    <td><?= h($a['ag_prenom'] . ' ' . $a['ag_nom']) ?></td>
-                    <td><?= h($a['resp_prenom'] . ' ' . $a['resp_nom']) ?></td>
-                    <td>
+                    <td class="col-personne"><?= h($a['ag_prenom'] . ' ' . $a['ag_nom']) ?></td>
+                    <td class="col-resp"><?= h($a['resp_prenom'] . ' ' . $a['resp_nom']) ?></td>
+                    <td class="col-dept">
                         <?php if (!empty($a['ID_departement'])): ?>
                             <span class="badge bg-dark text-white font-monospace" title="<?= h($a['dept_nom']) ?>"><?= h($a['dept_code'] ?? codeDepartement($a['ID_departement'])) ?></span>
-                        <?php else: ?>—<?php endif; ?>
+                        <?php else: ?><span class="text-muted">—</span><?php endif; ?>
                     </td>
-                    <td class="<?= estEnRetard($a['Date_fin'], $a['Statut']) ? 'text-danger fw-semibold' : '' ?>"><?= formatDate($a['Date_fin']) ?></td>
-                    <td style="min-width:110px;">
-                        <div class="progress"><div class="progress-bar bg-success" style="width:<?= (int)$a['Progression'] ?>%"></div></div>
-                        <span class="small text-muted"><?= (int)$a['Progression'] ?>%</span>
+                    <td class="col-echeance <?= estEnRetard($a['Date_fin'], $a['Statut']) ? 'text-danger fw-semibold' : '' ?>"><?= formatDate($a['Date_fin']) ?></td>
+                    <td class="col-progression">
+                        <div class="prog">
+                            <div class="progress" role="progressbar" aria-valuenow="<?= (int)$a['Progression'] ?>" aria-valuemin="0" aria-valuemax="100"><div class="progress-bar bg-success" style="width:<?= (int)$a['Progression'] ?>%"></div></div>
+                            <span class="prog-val"><?= (int)$a['Progression'] ?> %</span>
+                        </div>
                     </td>
-                    <td><span class="badge <?= statutBadgeClass($a['Statut']) ?>"><?= statutLabel($a['Statut'], (int)$a['Progression']) ?></span></td>
-                    <td class="text-nowrap">
-                        <a href="<?= BASE_URL ?>/admin/activite_form.php?id=<?= $a['ID__activites'] ?>" class="btn btn-sm btn-outline-secondary" title="Modifier"><i class="bi bi-pencil"></i></a>
-                        <a href="<?= BASE_URL ?>/tache_detail.php?id=<?= $a['ID__activites'] ?>" class="btn btn-sm btn-outline-secondary" title="Détail"><i class="bi bi-eye"></i></a>
+                    <td class="col-statut"><span class="badge <?= statutBadgeClass($a['Statut']) ?>"><?= statutLabel($a['Statut'], (int)$a['Progression']) ?></span></td>
+                    <td class="col-actions">
+                        <div class="actions">
+                            <a href="<?= BASE_URL ?>/admin/activite_form.php?id=<?= (int)$a['ID__activites'] ?>" class="btn btn-sm btn-outline-primary" title="Modifier" aria-label="Modifier"><i class="bi bi-pencil"></i></a>
+                            <a href="<?= BASE_URL ?>/tache_detail.php?id=<?= (int)$a['ID__activites'] ?>" class="btn btn-sm btn-outline-secondary" title="Voir le détail" aria-label="Voir le détail"><i class="bi bi-eye"></i></a>
+                            <form method="post" action="<?= BASE_URL ?>/tache_detail.php?id=<?= (int)$a['ID__activites'] ?>" data-confirm="Supprimer définitivement « <?= h(mb_strimwidth($a['Libelle'], 0, 80, '…')) ?> » et tous les éléments qui lui sont rattachés ?">
+                                <?= csrfField() ?>
+                                <input type="hidden" name="action" value="supprimer_tache">
+                                <button class="btn btn-sm btn-outline-danger" title="Supprimer" aria-label="Supprimer"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
             <?php endforeach; ?>

@@ -144,7 +144,7 @@ include __DIR__ . '/../includes/header.php';
     <div class="table-responsive">
         <table class="table mb-0">
             <thead><tr>
-                <th>Utilisateur</th><th>Matricule</th><th>Rôle</th><th>Département</th><th>Responsable Service / Sous-directeur</th><th>Statut</th><th class="text-end">Actions</th>
+                <th>Utilisateur</th><th>Matricule</th><th>Rôle</th><th>Département</th><th>Responsable Service / Sous-directeur</th><th>Statut</th><th class="text-end text-nowrap">Actions</th>
             </tr></thead>
             <tbody>
             <?php foreach ($utilisateurs as $u): ?>
@@ -165,6 +165,9 @@ include __DIR__ . '/../includes/header.php';
                         <?php if (!empty($u['est_agent']) && $u['role'] !== 'agent'): ?>
                             <span class="badge bg-info text-dark" title="Fonction supplémentaire">+ Agent</span>
                         <?php endif; ?>
+                        <?php if (!empty($u['est_admin']) && $u['role'] === 'responsable'): ?>
+                            <span class="badge bg-info text-dark" title="Fonction supplémentaire">+ Administrateur</span>
+                        <?php endif; ?>
                     </td>
                     <td>
                         <?php if (!empty($u['ID_departement'])): ?>
@@ -177,6 +180,7 @@ include __DIR__ . '/../includes/header.php';
                         <span class="badge <?= statutCompteBadgeClass($u['statut_compte']) ?>"><?= h(statutCompteLabel($u['statut_compte'])) ?></span>
                     </td>
                     <td class="text-end">
+                        <div class="d-flex flex-nowrap justify-content-end align-items-center gap-1 text-nowrap">
                         <?php $estSoi = (int)$u['ID_agent_dpip'] === (int)$user['ID_agent_dpip']; ?>
                         <a href="<?= BASE_URL ?>/admin/utilisateur_form.php?id=<?= $u['ID_agent_dpip'] ?>" class="btn btn-sm btn-outline-secondary" title="Modifier"><i class="bi bi-pencil"></i></a>
 
@@ -215,6 +219,7 @@ include __DIR__ . '/../includes/header.php';
                                 <button class="btn btn-sm btn-outline-danger" title="Supprimer"><i class="bi bi-trash"></i></button>
                             </form>
                         <?php endif; ?>
+                        </div>
                     </td>
                 </tr>
             <?php endforeach; ?>

@@ -531,6 +531,106 @@ function estAgentExecutant(array $u): bool
     return (($u['role'] ?? '') === 'agent') || !empty($u['est_agent']);
 }
 
+/**
+ * Le compte a-t-il les droits d'administration ?
+ *  - rôle « admin » ;
+ *  - ou Responsable Service ayant la fonction supplémentaire « Administrateur » (est_admin).
+ * Pour ce second cas, l'état est revérifié en base (compte actif, fonction toujours accordée) :
+ * retirer la fonction prend effet immédiatement, sans attendre la prochaine connexion.
+ */
+function estAdministrateurActif(array $u): bool
+{
+    if (($u['role'] ?? '') === 'admin') {
+        return true;
+    }
+    if (($u['role'] ?? '') !== 'responsable' || empty($u['est_admin'])) {
+        return false;
+    }
+    static $cache = [];
+    $id = (int)($u['ID_agent_dpip'] ?? 0);
+    if (!isset($cache[$id])) {
+        try {
+            $s = Database::getConnection()->prepare(
+                "SELECT 1 FROM agent_dpip WHERE ID_agent_dpip = ? AND role = 'responsable' AND est_admin = 1 AND statut_compte = 'actif'"
+            );
+            $s->execute([$id]);
+            $cache[$id] = (bool)$s->fetchColumn();
+        } catch (Throwable $e) {
+            $cache[$id] = false;   // colonne absente (migration non appliquée) : pas de droits supplémentaires
+        }
+    }
+    return $cache[$id];
+}
+
+/** $userId est-il le responsable hiérarchique direct de $executantId ? */
+function estSuperviseurDe(PDO $pdo, int $userId, int $executantId): bool
+{
+    if ($userId <= 0 || $executantId <= 0) {
+        return false;
+    }
+    $stmt = $pdo->prepare('SELECT 1 FROM agent_dpip WHERE ID_agent_dpip = ? AND ID_responsable = ?');
+    $stmt->execute([$executantId, $userId]);
+    return (bool)$stmt->fetchColumn();
+}
+
+/**
+ * Qui peut modifier ou supprimer une activité / sous-activité / tâche ?
+ *  - l'administrateur et le directeur : toutes les activités ;
+ *  - un responsable (Responsable Service ou Sous-directeur) : celles qu'il a attribuées
+ *    et celles qui sont confiées à l'un de ses agents (même attribuées par un autre).
+ * $activite : ligne de la table activites (ID_responsable, ID_agent_dpip).
+ */
+function peutGererActivite(PDO $pdo, array $user, array $activite): bool
+{
+    $role = $user['role'] ?? '';
+    if ($role === 'admin' || $role === 'directeur' || estAdministrateurActif($user)) {
+        return true;
+    }
+    if ($role === 'responsable') {
+        $moi = (int)($user['ID_agent_dpip'] ?? 0);
+        return (int)($activite['ID_responsable'] ?? 0) === $moi
+            || estSuperviseurDe($pdo, $moi, (int)($activite['ID_agent_dpip'] ?? 0));
+    }
+    return false;
+}
+
+/**
+ * Destinataires possibles d'une recommandation du Directeur $dirId : ses Responsables Service
+ * et Sous-directeurs actifs (comptes de rôle « responsable » dont il est le supérieur hiérarchique).
+ */
+function destinatairesRecommandation(PDO $pdo, int $dirId): array
+{
+    $stmt = $pdo->prepare(
+        "SELECT * FROM agent_dpip
+         WHERE role = 'responsable' AND ID_responsable = ? AND statut_compte = 'actif'
+         ORDER BY FIELD(type_responsable, 'sous_directeur', 'service'), Nom, Prenom"
+    );
+    $stmt->execute([$dirId]);
+    return $stmt->fetchAll();
+}
+
+/** Nombre de recommandations non lues reçues par $agentId. */
+function nbRecommandationsNonLues(PDO $pdo, int $agentId): int
+{
+    try {
+        $stmt = $pdo->prepare('SELECT COUNT(*) FROM recommandation WHERE ID_destinataire = ? AND lu = 0');
+        $stmt->execute([$agentId]);
+        return (int)$stmt->fetchColumn();
+    } catch (Throwable $e) {
+        return 0;   // table absente (migration non appliquée) : on ne bloque pas la page
+    }
+}
+
+function importanceRecommandationLabel(string $importance): string
+{
+    return ['normale' => 'Normale', 'importante' => 'Importante', 'urgente' => 'Urgente'][$importance] ?? $importance;
+}
+
+function importanceRecommandationBadge(string $importance): string
+{
+    return ['normale' => 'bg-secondary', 'importante' => 'bg-warning text-dark', 'urgente' => 'bg-danger'][$importance] ?? 'bg-secondary';
+}
+
 /** Libellés des rôles */
 function roleLabel(string $role): string
 {
@@ -753,6 +853,70 @@ function createNotification(PDO $pdo, int $agentId, string $titre, string $messa
 }
 
 /**
+ * Reconnaît le navigateur et le système d'après l'en-tête User-Agent enregistré à la connexion.
+ * Retourne : ['navigateur' => 'Chrome 152', 'nom' => 'Chrome', 'version' => '152', 'systeme' => 'Windows 10/11',
+ *             'appareil' => 'Ordinateur'|'Mobile'|'Outil', 'icone' => classe Bootstrap Icons].
+ * L'ordre des règles compte : Edge, Opera et Samsung Internet contiennent aussi « Chrome », et Chrome contient « Safari ».
+ * Un User-Agent peut être falsifié : cette information est indicative (suivi de sécurité), pas une preuve.
+ */
+function navigateurDepuisUserAgent(?string $ua): array
+{
+    $ua = trim((string)$ua);
+    $inconnu = ['navigateur' => 'Navigateur inconnu', 'nom' => 'Inconnu', 'version' => '', 'systeme' => '', 'appareil' => '', 'icone' => 'bi-question-circle'];
+    if ($ua === '') {
+        return $inconnu;
+    }
+
+    // Système d'exploitation
+    $systeme = '';
+    $appareil = 'Ordinateur';
+    if (preg_match('/Windows NT (\d+\.\d+)/', $ua, $m)) {
+        $systeme = ['10.0' => 'Windows 10/11', '6.3' => 'Windows 8.1', '6.2' => 'Windows 8', '6.1' => 'Windows 7'][$m[1]] ?? 'Windows';
+    } elseif (preg_match('/Android ([\d.]+)/', $ua, $m)) {
+        $systeme = 'Android ' . strtok($m[1], '.');
+        $appareil = 'Mobile';
+    } elseif (preg_match('/(iPhone|iPad|iPod)/', $ua)) {
+        $systeme = str_contains($ua, 'iPad') ? 'iPadOS' : 'iOS';
+        $appareil = 'Mobile';
+    } elseif (str_contains($ua, 'Mac OS X') || str_contains($ua, 'Macintosh')) {
+        $systeme = 'macOS';
+    } elseif (str_contains($ua, 'CrOS')) {
+        $systeme = 'ChromeOS';
+    } elseif (str_contains($ua, 'Linux') || str_contains($ua, 'X11')) {
+        $systeme = 'Linux';
+    }
+    if ($appareil === 'Ordinateur' && preg_match('/Mobile|Tablet/', $ua)) {
+        $appareil = 'Mobile';
+    }
+
+    // Navigateur (du plus spécifique au plus général)
+    $regles = [
+        ['/\bEdg(?:e|A|iOS)?\/(\d+)/',              'Edge',              'bi-browser-edge'],
+        ['/\b(?:OPR|Opera)\/(\d+)/',                'Opera',             'bi-globe2'],
+        ['/\bSamsungBrowser\/(\d+)/',               'Samsung Internet',  'bi-globe2'],
+        ['/\bVivaldi\/(\d+)/',                      'Vivaldi',           'bi-globe2'],
+        ['/\b(?:Firefox|FxiOS)\/(\d+)/',            'Firefox',           'bi-browser-firefox'],
+        ['/\b(?:Chrome|CriOS|Chromium)\/(\d+)/',    'Chrome',            'bi-browser-chrome'],
+        ['/\bVersion\/(\d+)[\d.]*.*\bSafari\//',    'Safari',            'bi-browser-safari'],
+        ['/\bMSIE (\d+)/',                          'Internet Explorer', 'bi-globe2'],
+        ['/\bTrident\/.*rv:(\d+)/',                 'Internet Explorer', 'bi-globe2'],
+    ];
+    foreach ($regles as [$motif, $nom, $icone]) {
+        if (preg_match($motif, $ua, $m)) {
+            return ['navigateur' => $nom . ' ' . $m[1], 'nom' => $nom, 'version' => $m[1], 'systeme' => $systeme, 'appareil' => $appareil, 'icone' => $icone];
+        }
+    }
+    // Outils en ligne de commande, robots, scripts
+    if (preg_match('/^(curl|Wget|python-requests|Go-http-client|PostmanRuntime|okhttp|Java)\/?([\d.]*)/i', $ua, $m)) {
+        $v = $m[2] !== '' ? ' ' . strtok($m[2], '.') : '';
+        return ['navigateur' => 'Outil (' . $m[1] . $v . ')', 'nom' => $m[1], 'version' => $m[2], 'systeme' => $systeme, 'appareil' => 'Outil', 'icone' => 'bi-terminal'];
+    }
+    if (preg_match('/bot|crawl|spider|slurp/i', $ua)) {
+        return ['navigateur' => 'Robot', 'nom' => 'Robot', 'version' => '', 'systeme' => $systeme, 'appareil' => 'Outil', 'icone' => 'bi-robot'];
+    }
+    return $inconnu + ['systeme' => $systeme];
+}
+/**
  * Adresse IP du client, et son origine lisible.
  * Renvoie « Réseau local » pour une IP privée / loopback ; sinon null tant
  * qu'aucune source de géolocalisation (base MaxMind, API…) n'est branchée
@@ -913,6 +1077,7 @@ function actionModifLabel(string $action): string
         'besoin'            => 'Besoin exprimé',
         'observation'       => 'Observation',
         'retour'            => 'Retour du responsable',
+        'export'            => 'Export Excel',
     ][$action] ?? ucfirst(str_replace('_', ' ', $action));
 }
 
@@ -928,6 +1093,7 @@ function tableConcerneeLabel(string $table): string
         'livrables'          => 'Livrable',
         'besions'            => 'Besoin',
         'observation'        => 'Observation',
+        'recommandation'     => 'Recommandation',
         'connexion'          => 'Connexion',
     ][$table] ?? $table;
 }

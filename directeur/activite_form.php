@@ -25,10 +25,7 @@ if ($edition) {
         flash('danger', 'Activité introuvable.');
         redirect('/directeur/activites.php');
     }
-    if ((int)$existing['ID_responsable'] !== $dirId) {
-        flash('danger', "Vous ne pouvez modifier que les activités que la direction a déléguées.");
-        redirect('/directeur/activites.php');
-    }
+    // La direction peut modifier toutes les activités (déléguées par elle ou par un responsable).
     $data = array_merge($data, [
         'Libelle' => $existing['Libelle'],
         'Observation' => $existing['Observation'] ?? '',
@@ -94,11 +91,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verifyCsrf()) {
             if ($edition) {
                 $pdo->prepare(
                     'UPDATE activites SET Libelle=?, Observation=?, Types=?, Produit=?, pere_ID=?, Date_debut=?, Date_fin=?,
-                            ID_agent_dpip=?, ID_departement=?, Priorite=?, Statut=? WHERE ID__activites=? AND ID_responsable=?'
+                            ID_agent_dpip=?, ID_departement=?, Priorite=?, Statut=? WHERE ID__activites=?'
                 )->execute([
                     $data['Libelle'], $data['Observation'] ?: null, $data['Types'], $data['Produit'] ?: null, $pereId,
                     $data['Date_debut'], $data['Date_fin'], $data['ID_agent_dpip'],
-                    $deptId ?: null, $data['Priorite'], $data['Statut'], $id, $dirId,
+                    $deptId ?: null, $data['Priorite'], $data['Statut'], $id,
                 ]);
                 majProgression($pdo, $id);
                 if ((int)($existing['pere_ID'] ?? 0) !== (int)($pereId ?? 0)) {
