@@ -388,10 +388,13 @@ a { text-decoration: none; }
 /* --- Listes d'activités (administration, direction, responsable) : compactes, lisibles, sans défilement horizontal ---
    Largeurs fixes pour toutes les colonnes sauf « Libellé », qui prend l'espace restant ; les textes passent à la ligne. */
 .table-activites { --bs-table-hover-bg: #f3f8f3; font-size: .85rem; table-layout: fixed; width: 100%; }
+/* En-têtes : texte plus grand, foncé, en casse normale ; retour à la ligne aux espaces (jamais au milieu d'un mot) ;
+   filet vert en dessous (ombre interne : il suit l'en-tête quand celui-ci reste affiché). */
 .table-activites thead th {
-  font-size: .7rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; line-height: 1.2;
-  color: var(--pta-text-muted); background: #f6f8fa; border-bottom: 2px solid var(--pta-border);
-  padding: .7rem .6rem; vertical-align: middle; overflow-wrap: anywhere;
+  white-space: normal; overflow-wrap: normal; word-break: normal;
+  font-size: .82rem; font-weight: 700; text-transform: none; letter-spacing: 0; line-height: 1.25;
+  color: #1f2933; background: #e8f0e8; border-bottom: 0; box-shadow: inset 0 -3px 0 var(--pta-navy);
+  padding: .85rem .6rem; vertical-align: middle;
 }
 .table-activites tbody td { padding: .6rem; vertical-align: middle; overflow-wrap: anywhere; }
 .table-activites .badge { font-size: .72rem; }
@@ -412,9 +415,19 @@ a { text-decoration: none; }
 .table-activites .actions { display: flex; flex-wrap: nowrap; justify-content: flex-end; align-items: center; gap: .3rem; }
 .table-activites .actions form { margin: 0; }
 .table-activites .actions .btn { display: inline-flex; align-items: center; justify-content: center; width: 1.9rem; height: 1.9rem; padding: 0; }
+/* Grands écrans : la colonne « Responsable Service / Sous-directeur » est assez large pour s'écrire sur deux lignes */
+@media (min-width: 1501px) {
+  .table-activites .col-resp { width: 165px; }
+}
+/* Écrans larges : l'en-tête du tableau reste affiché, sous la barre du haut, quand on fait défiler la liste */
+@media (min-width: 1321px) {
+  .table-activites-wrap { overflow: visible; }
+  .table-activites thead th { position: sticky; top: 72px; z-index: 3; }
+}
 /* Écrans moyens (portables) : un peu plus compact pour garder le libellé lisible */
 @media (max-width: 1500px) {
   .table-activites { font-size: .8rem; }
+  .table-activites thead th { font-size: .78rem; }
   .table-activites thead th, .table-activites tbody td { padding-left: .45rem; padding-right: .45rem; }
   .table-activites .col-personne { width: 118px; }
   .table-activites .col-resp { width: 122px; }

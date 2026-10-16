@@ -98,7 +98,7 @@ function ptaCharger(PDO $pdo, int $annee, ?int $deptId = null): array
 
     $acts = $pdo->query(
         "SELECT a.ID__activites AS id, a.Libelle, a.Observation, a.Types, a.Produit, a.pere_ID, a.Date_debut, a.Date_fin,
-                a.ID_departement, ag.Prenom AS ag_prenom, ag.Nom AS ag_nom, d.Nom_court AS ag_dept
+                a.Statut, a.ID_departement, ag.Prenom AS ag_prenom, ag.Nom AS ag_nom, d.Nom_court AS ag_dept
          FROM activites a
          JOIN agent_dpip ag ON ag.ID_agent_dpip = a.ID_agent_dpip
          LEFT JOIN departement d ON d.id_departement = ag.ID_departement
@@ -219,7 +219,7 @@ function ptaLigneActivite(int $r, array $n, string $numero, int $niveau, bool $c
 }
 
 /** Génère les lignes d'un bloc (service) : titre, ACTIVITÉS COURANTES, activités, ACTIVITÉS INNOVANTES. */
-function ptaLignesBloc(array $bloc, int &$r, array $modele, bool $colorerTaches = false): string
+function ptaLignesBloc(array $bloc, int &$r, array $modele): string
 {
     $remplir = function (string $gab, string $texte, int $ligne): string {
         return str_replace(['{{R}}', '{{TEXTE}}'], [(string)$ligne, xlsxEchapper(ptaTexte($texte))], $gab);
@@ -230,9 +230,10 @@ function ptaLignesBloc(array $bloc, int &$r, array $modele, bool $colorerTaches 
     $i = 0;
     foreach ($bloc['racines'] as $racine) {
         $i++;
-        $parcourir = function (array $n, string $numero, int $niveau) use (&$parcourir, &$r, &$x, $colorerTaches) {
-            // période colorée : activités et sous-activités (comme le PTA) ; les tâches seulement sur demande
-            $colorer = $n['Types'] !== 'tache' || $colorerTaches;
+        $parcourir = function (array $n, string $numero, int $niveau) use (&$parcourir, &$r, &$x) {
+            // Semaines colorées en bleu : uniquement pour les activités, sous-activités et tâches TERMINÉES,
+            // sur la période pour laquelle elles ont été définies (dates de début et de fin).
+            $colorer = ($n['Statut'] ?? '') === 'termine';
             $x .= ptaLigneActivite($r, $n, $numero, min($niveau, 2), $colorer); $r++;
             $k = 0;
             foreach ($n['enfants'] as $c) {
@@ -248,12 +249,11 @@ function ptaLignesBloc(array $bloc, int &$r, array $modele, bool $colorerTaches 
 
 /**
  * Écrit le classeur PTA dans $chemin.
- * $colorerTaches : false (défaut) = seules les périodes des activités et sous-activités sont colorées,
- *                   true = les tâches aussi.
+ * Semaines colorées en bleu = période des activités, sous-activités et tâches au statut « Terminé ».
  * Le classeur est livré SANS filtre automatique (comme le PTA d'origine).
  * @return array{nbActivites:int, nbBlocs:int, nbLignes:int, feuille:string}
  */
-function ptaGenererClasseur(PDO $pdo, string $chemin, int $annee, ?int $deptId = null, bool $colorerTaches = false): array
+function ptaGenererClasseur(PDO $pdo, string $chemin, int $annee, ?int $deptId = null): array
 {
     if (!extension_loaded('zip')) {
         throw new RuntimeException("L'extension PHP « zip » n'est pas activée sur ce serveur : impossible de générer un fichier .xlsx.");
@@ -269,7 +269,7 @@ function ptaGenererClasseur(PDO $pdo, string $chemin, int $annee, ?int $deptId =
     $r = 3;
     $lignes = '';
     foreach ($donnees['blocs'] as $bloc) {
-        $lignes .= ptaLignesBloc($bloc, $r, $modele, $colorerTaches);
+        $lignes .= ptaLignesBloc($bloc, $r, $modele);
     }
     $derniere = $r - 1;
 
@@ -335,4 +335,57 @@ function ptaGenererClasseur(PDO $pdo, string $chemin, int $annee, ?int $deptId =
     $zip->close();
 
     return ['nbActivites' => $donnees['nbActivites'], 'nbBlocs' => count($donnees['blocs']), 'nbLignes' => $derniere, 'feuille' => $nomFeuille];
+}
+
+/** Nom de fichier ASCII sûr (sans accents ni espaces) pour un nom de direction / service. */
+function ptaNomFichier(string $nom): string
+{
+    $s = strtr($nom, ['é' => 'e', 'è' => 'e', 'ê' => 'e', 'à' => 'a', 'â' => 'a', 'î' => 'i', 'ô' => 'o', 'ù' => 'u', 'û' => 'u', 'ç' => 'c',
+                      'É' => 'E', 'È' => 'E', 'À' => 'A']);
+    $s = trim(preg_replace('/[^A-Za-z0-9]+/', '-', $s), '-');
+    return $s !== '' ? $s : 'SERVICE';
+}
+
+/**
+ * Archive ZIP contenant le fichier GLOBAL (toutes directions et tous services) puis un fichier PTA par
+ * direction / service qui a au moins une activité sur l'année. Tous au même format que le PTA d'origine.
+ * Toutes les activités de la base y figurent, qu'elles aient été importées ou saisies à la main.
+ * @return array{fichiers: list<array{nom:string, nbActivites:int}>, nbActivites:int}
+ */
+function ptaGenererArchive(PDO $pdo, string $cheminZip, int $annee): array
+{
+    if (!extension_loaded('zip')) {
+        throw new RuntimeException("L'extension PHP « zip » n'est pas activée sur ce serveur : impossible de générer un fichier .xlsx.");
+    }
+    $zip = new ZipArchive();
+    if (file_exists($cheminZip)) unlink($cheminZip);
+    if ($zip->open($cheminZip, ZipArchive::CREATE) !== true) {
+        throw new RuntimeException("Impossible de créer l'archive ZIP.");
+    }
+    $temporaires = [];
+    $fichiers = [];
+    try {
+        $ajouter = function (string $nomDansZip, ?int $deptId) use ($pdo, $annee, $zip, &$temporaires, &$fichiers): array {
+            $tmp = tempnam(sys_get_temp_dir(), 'pta_zip_') . '.xlsx';
+            $temporaires[] = $tmp;
+            $r = ptaGenererClasseur($pdo, $tmp, $annee, $deptId);
+            $zip->addFile($tmp, $nomDansZip);
+            $fichiers[] = ['nom' => $nomDansZip, 'nbActivites' => $r['nbActivites']];
+            return $r;
+        };
+        $global = $ajouter('PTA-' . $annee . '-GLOBAL-toutes-directions.xlsx', null);
+        foreach (ptaCharger($pdo, $annee, null)['blocs'] as $bloc) {
+            if ($bloc['nb'] > 0 && $bloc['dept']['id'] > 0) {
+                $ajouter('PTA-' . $annee . '-' . ptaNomFichier($bloc['dept']['nom']) . '.xlsx', (int)$bloc['dept']['id']);
+            }
+        }
+        $zip->close();
+    } catch (Throwable $e) {
+        @$zip->close();
+        @unlink($cheminZip);
+        throw $e;
+    } finally {
+        foreach ($temporaires as $t) { @unlink($t); }
+    }
+    return ['fichiers' => $fichiers, 'nbActivites' => $global['nbActivites']];
 }

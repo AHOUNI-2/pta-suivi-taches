@@ -76,7 +76,7 @@ include __DIR__ . '/../includes/header.php';
 </div>
 
 <div class="card">
-    <div class="table-responsive">
+    <div class="table-responsive table-activites-wrap">
         <table class="table table-hover table-activites mb-0">
             <thead><tr>
                 <th class="col-type">Type</th><th class="col-libelle">Libellé</th><th class="col-personne">Agent</th><th class="col-prio">Priorité</th><th class="col-echeance">Échéance</th><th class="col-progression">Progression</th><th class="col-statut">Statut</th><th class="col-actions">Actions</th>
