@@ -42,6 +42,7 @@ include __DIR__ . '/../includes/header.php';
     <p class="text-muted mb-0">Toutes les activités, sous-activités et tâches, tous responsables confondus.</p>
     <div class="d-flex gap-2">
         <a href="<?= BASE_URL ?>/admin/activites_import.php" class="btn btn-outline-secondary"><i class="bi bi-file-earmark-arrow-up"></i> Importer depuis Excel</a>
+        <a href="<?= BASE_URL ?>/admin/activites_import_pta.php" class="btn btn-outline-secondary"><i class="bi bi-file-earmark-spreadsheet"></i> Importer un fichier PTA</a>
         <a href="<?= BASE_URL ?>/admin/activites_export.php" class="btn btn-outline-secondary"><i class="bi bi-file-earmark-excel"></i> Exporter vers Excel</a>
         <a href="<?= BASE_URL ?>/admin/activite_form.php" class="btn btn-bleu"><i class="bi bi-plus-lg"></i> Nouvelle activité / tâche</a>
     </div>

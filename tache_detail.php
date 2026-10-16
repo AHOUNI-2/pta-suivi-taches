@@ -21,12 +21,12 @@ $tacheParent = null;
 $tacheEnfants = [];
 if ($tache) {
     if (!empty($tache['pere_ID'])) {
-        $pStmt = $pdo->prepare('SELECT ID__activites, Libelle, Types FROM activites WHERE ID__activites = ?');
+        $pStmt = $pdo->prepare('SELECT ID__activites, Libelle, Types, ID_agent_dpip FROM activites WHERE ID__activites = ?');
         $pStmt->execute([$tache['pere_ID']]);
         $tacheParent = $pStmt->fetch() ?: null;
     }
     $eStmt = $pdo->prepare(
-        "SELECT a.ID__activites, a.Libelle, a.Types, a.Statut, a.Progression, a.Date_fin,
+        "SELECT a.ID__activites, a.ID_agent_dpip, a.Libelle, a.Types, a.Statut, a.Progression, a.Date_fin,
                 ag.Prenom AS ag_prenom, ag.Nom AS ag_nom
          FROM activites a JOIN agent_dpip ag ON ag.ID_agent_dpip = a.ID_agent_dpip
          WHERE a.pere_ID = ? ORDER BY FIELD(a.Types,'activite','sous-activite','tache'), a.Date_fin"
@@ -55,6 +55,14 @@ $estSuperviseur = $user['role'] === 'responsable' && !$estAssignateur
 $estDirecteurGlobal = $roleAssignateur === 'directeur';                                    // le directeur voit toutes les activités
 // Modifier / supprimer : administrateur, direction, responsable qui a attribué ou responsable de l'exécutant.
 $peutGerer = $estAdmin || $estDirecteurGlobal || $estAssignateur || $estSuperviseur;
+
+// Un simple exécutant (agent) ne voit que ce qui lui est assigné : ni l'activité parente, ni les éléments rattachés
+// qui sont attribués à un autre agent.
+if (!$peutGerer) {
+    $monId = (int)$user['ID_agent_dpip'];
+    if ($tacheParent && (int)$tacheParent['ID_agent_dpip'] !== $monId) { $tacheParent = null; }
+    $tacheEnfants = array_values(array_filter($tacheEnfants, fn($e) => (int)$e['ID_agent_dpip'] === $monId));
+}
 
 // Alias rétro-compatibles utilisés plus bas dans la page
 $estAgent = $estExecutant;

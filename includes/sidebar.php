@@ -72,6 +72,9 @@ if (!$actingBoss && in_array($user['role'], ['agent', 'responsable'], true)) {
             <a href="<?= BASE_URL ?>/admin/activites_import.php" class="nav-link <?= navActive('admin', 'activites_import.php', $currentDir, $currentScript) ?>">
                 <i class="bi bi-file-earmark-arrow-up"></i> Importer depuis Excel
             </a>
+            <a href="<?= BASE_URL ?>/admin/activites_import_pta.php" class="nav-link <?= navActive('admin', 'activites_import_pta.php', $currentDir, $currentScript) ?>">
+                <i class="bi bi-file-earmark-spreadsheet"></i> Importer un fichier PTA
+            </a>
             <a href="<?= BASE_URL ?>/admin/activites_export.php" class="nav-link <?= navActive('admin', 'activites_export.php', $currentDir, $currentScript) ?>">
                 <i class="bi bi-file-earmark-excel"></i> Exporter vers Excel
             </a>
@@ -144,6 +147,7 @@ if (!$actingBoss && in_array($user['role'], ['agent', 'responsable'], true)) {
                 ['activites.php', 'bi-list-task', 'Toutes les activités'],
                 ['rapports.php', 'bi-bar-chart-line', 'Rapports &amp; statistiques'],
                 ['activites_import.php', 'bi-file-earmark-arrow-up', 'Importer depuis Excel'],
+                ['activites_import_pta.php', 'bi-file-earmark-spreadsheet', 'Importer un fichier PTA'],
                 ['activites_export.php', 'bi-file-earmark-excel', 'Exporter vers Excel'],
                 ['utilisateurs.php', 'bi-people', 'Utilisateurs'],
                 ['departements.php', 'bi-diagram-3', 'Départements'],
